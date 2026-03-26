@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse fresh produce from farmers across India">
+    <title>Browse Produce - FarmDirect</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <a href="index.html" class="sidebar__logo">
+                🌾 FarmDirect
+            </a>
+            <!-- Notification Bell -->
+            <div class="notification-bell" onclick="toggleNotifications()">
+                🔔
+                <span class="notification-bell__badge" id="notifBadge" style="display:none;">0</span>
+            </div>
+            <!-- Notifications Dropdown -->
+            <div class="notification-dropdown" id="notifDropdown">
+                <div class="notification-dropdown__header">
+                    <h4>Notifications</h4>
+                    <button class="btn btn--sm" onclick="markAllRead()"
+                        style="font-size:0.75rem;padding:0.25rem 0.5rem;">Mark all read</button>
+                </div>
+                <div class="notification-dropdown__list" id="notifList">
+                    <p style="padding:1rem;color:var(--gray-500);text-align:center;">No notifications</p>
+                </div>
+            </div>
+            <nav>
+                <ul class="sidebar__nav">
+                    <li><a href="#" class="sidebar__link active" data-section="browse">🛒 Browse Produce</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="cart">🛒 My Cart <span id="cartBadge" class="badge" style="display:none;background:var(--primary-600);color:white;border-radius:50%;padding:2px 6px;font-size:0.7rem;vertical-align:middle;">0</span></a></li>
+                    <li><a href="#" class="sidebar__link" data-section="offers">📤 My Offers</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="profile">👤 Profile</a></li>
+                </ul>
+            </nav>
+            <div style="position: absolute; bottom: 2rem; left: 1.5rem; right: 1.5rem;">
+                <div
+                    style="padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 0.75rem; margin-bottom: 1rem;">
+                    <p style="color: var(--gray-400); font-size: 0.875rem;">Logged in as</p>
+                    <p style="color: white; font-weight: 600;" id="userName">Buyer</p>
+                </div>
+                <button onclick="logout()" class="btn btn--secondary btn--full"
+                    style="color: var(--gray-300); border-color: var(--gray-600);">
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Hamburger -->
+        <button class="dashboard-hamburger" id="dashboardHamburger" onclick="toggleSidebar()">☰</button>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Stats Section -->
+            <section id="statsSection">
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:var(--primary-100);color:var(--primary-700);">📤
+                        </div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statTotalOffers">0</p>
+                            <p class="stat-card__label">Offers Sent</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:#d1fae5;color:#059669;">✅</div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statAccepted">0</p>
+                            <p class="stat-card__label">Accepted</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:var(--accent-100);color:var(--accent-600);">⏳
+                        </div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statPending">0</p>
+                            <p class="stat-card__label">Pending</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:#fee2e2;color:#dc2626;">❌</div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statRejected">0</p>
+                            <p class="stat-card__label">Rejected</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Browse Section -->
+            <section id="browseSection">
+                <div class="page-header">
+                    <h1 class="page-title">Browse Fresh Produce</h1>
+                </div>
+
+                <!-- Category Pills -->
+                <div class="category-pills" id="categoryPills">
+                    <button class="category-pill active" data-category="" onclick="filterByCategory(this, '')">🌿
+                        All</button>
+                    <button class="category-pill" data-category="vegetables"
+                        onclick="filterByCategory(this, 'vegetables')">🥬 Vegetables</button>
+                    <button class="category-pill" data-category="fruits" onclick="filterByCategory(this, 'fruits')">🍎
+                        Fruits</button>
+                    <button class="category-pill" data-category="grains" onclick="filterByCategory(this, 'grains')">🌾
+                        Grains</button>
+                    <button class="category-pill" data-category="spices" onclick="filterByCategory(this, 'spices')">🌶️
+                        Spices</button>
+                    <button class="category-pill" data-category="pulses" onclick="filterByCategory(this, 'pulses')">🫘
+                        Pulses</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <input type="text" class="form-input" id="searchCrop" placeholder="🔍 Search by crop name...">
+                    <input type="text" class="form-input" id="searchLocation" placeholder="📍 Filter by location...">
+                    <select class="form-select" id="priceSort">
+                        <option value="">Sort by Price</option>
+                        <option value="low">Price: Low to High</option>
+                        <option value="high">Price: High to Low</option>
+                    </select>
+                    <button class="btn btn--primary" onclick="loadListings()">Apply Filters</button>
+                </div>
+
+                <div class="listings-grid" id="listingsGrid">
+                    <!-- Listings will be loaded here -->
+                </div>
+            </section>
+
+            <!-- My Cart Section -->
+            <section id="cartSection" style="display:none;">
+                <div class="page-header">
+                    <h1 class="page-title">Shopping Cart</h1>
+                    <button class="btn btn--secondary" onclick="clearCartUI()">Empty Cart</button>
+                </div>
+                <div class="card" style="padding:0; overflow:hidden;">
+                    <table class="table" id="cartTable">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartList">
+                            <!-- Cart items added dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="cartEmpty" style="padding:3rem; text-align:center; display:none;">
+                        <p style="font-size:1.5rem; color:var(--gray-400); margin-bottom:1rem;">Your cart is empty</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Go Shopping</button>
+                    </div>
+                </div>
+                <div id="cartFooter" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:center; background:white; padding:1.5rem; border-radius:1rem; box-shadow:var(--shadow-md);">
+                    <div style="font-size:1.25rem;">
+                        <span style="color:var(--gray-600);">Total Amount:</span>
+                        <span style="font-weight:700; color:var(--primary-600); margin-left:1rem;" id="cartTotalAmount">₹0</span>
+                    </div>
+                    <button class="btn btn--primary btn--lg" onclick="placeOrder()">📦 Place Order Now</button>
+                </div>
+            </section>
+
+            <!-- My Offers Section -->
+            <section id="offersSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Sent Offers</h1>
+                </div>
+                <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
+                    <table class="offers-table" id="offersTable">
+                        <thead>
+                            <tr>
+                                <th>Crop</th>
+                                <th>Farmer</th>
+                                <th>Listed Price</th>
+                                <th>My Offer</th>
+                                <th>Status</th>
+                                <th>Contact</th>
+                            </tr>
+                        </thead>
+                        <tbody id="offersTableBody">
+                            <!-- Offers will be loaded here -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="noOffersMessage" style="display: none;">
+                        <div class="empty-state__icon">📤</div>
+                        <h3 class="empty-state__title">No offers sent yet</h3>
+                        <p class="empty-state__text">Browse produce and send your first offer!</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Browse Produce</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profileSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Profile</h1>
+                </div>
+                <div class="card" style="max-width: 600px; padding: 2rem;">
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-input" id="profileName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-input" id="profilePhone" disabled
+                                style="background:var(--gray-100);cursor:not-allowed;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-input" id="profileRole" disabled
+                                style="background:var(--gray-100);cursor:not-allowed;text-transform:capitalize;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="profileLocation" placeholder="City, State">
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--lg">
+                            💾 Save Changes
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Send Offer Modal -->
+    <div class="modal-overlay" id="offerModal">
+        <div class="modal">
+            <div class="modal__header">
+                <h3>🛒 Buy Produce</h3>
+                <button class="modal__close" onclick="closeOfferModal()">×</button>
+            </div>
+            <div id="modalListingInfo"
+                style="padding: 1rem; background: var(--gray-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                <!-- Listing info will be inserted here -->
+            </div>
+            <form id="buyForm">
+                <input type="hidden" id="buyListingId">
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label class="form-label">Quantity (<span id="modalUnit">kg</span>)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="number" class="form-input" id="buyQuantity" value="1" min="1" required 
+                               oninput="updateModalTotal()" style="flex: 1;">
+                        <span style="color:var(--gray-500); font-size: 0.9rem;">Available: <span id="modalMaxQty">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea class="form-textarea" id="buyMessage" placeholder="Add a message for the farmer..."></textarea>
+                </div>
+                <div style="padding: 1rem; background: var(--primary-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--gray-600);">Total Price:</span>
+                        <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);" id="modalTotalPrice">₹0</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn--primary btn--full btn--lg">🛒 Add to Cart</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeOfferModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        const IMG_BASE = 'http://127.0.0.1:5000';
+        let searchDebounce = null;
+        let currentListings = [];
+
+        // Check authentication
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getUser();
+            if (!user || user.role !== 'buyer') {
+                window.location.href = 'auth.html';
+                return;
+            }
+            document.getElementById('userName').textContent = user.name;
+
+            // Pre-fill profile
+            document.getElementById('profileName').value = user.name;
+            document.getElementById('profilePhone').value = user.phone;
+            document.getElementById('profileRole').value = user.role;
+            document.getElementById('profileLocation').value = user.location || '';
+
+            loadStats();
+            loadListings();
+            loadMyOffers();
+            loadNotifications();
+            updateCartBadge();
+
+            // Handle initial section from hash (e.g., #cart)
+            if (window.location.hash === '#cart') {
+                showSection('cart');
+            }
+        });
+
+        // Navigation
+        document.querySelectorAll('.sidebar__link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.target.dataset.section;
+                showSection(section);
+            });
+        });
+
+        function showSection(sectionName) {
+            document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('active'));
+            document.querySelector(`[data-section="${sectionName}"]`)?.classList.add('active');
+
+            document.getElementById('browseSection').style.display = sectionName === 'browse' ? 'block' : 'none';
+            document.getElementById('offersSection').style.display = sectionName === 'offers' ? 'block' : 'none';
+            document.getElementById('cartSection').style.display = sectionName === 'cart' ? 'block' : 'none';
+            document.getElementById('profileSection').style.display = sectionName === 'profile' ? 'block' : 'none';
+
+            if (sectionName === 'cart') {
+                renderCart();
+            }
+        }
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // ---- STATS ----
+        async function loadStats() {
+            try {
+                const stats = await api.get('/stats/buyer');
+                document.getElementById('statTotalOffers').textContent = stats.totalOffers;
+                document.getElementById('statAccepted').textContent = stats.acceptedOffers;
+                document.getElementById('statPending').textContent = stats.pendingOffers;
+                document.getElementById('statRejected').textContent = stats.rejectedOffers;
+            } catch (error) {
+                console.error('Stats error:', error.message);
+            }
+        }
+
+        // ---- NOTIFICATIONS ----
+        async function loadNotifications() {
+            try {
+                const data = await api.get('/notifications');
+                const badge = document.getElementById('notifBadge');
+                const list = document.getElementById('notifList');
+
+                if (data.unreadCount > 0) {
+                    badge.style.display = 'flex';
+                    badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                if (data.notifications.length === 0) {
+                    list.innerHTML = '<p style="padding:1rem;color:var(--gray-500);text-align:center;">No notifications</p>';
+                    return;
+                }
+
+                list.innerHTML = data.notifications.slice(0, 20).map(n => `
+                    <div class="notification-item ${n.read ? '' : 'notification-item--unread'}" onclick="markRead('${n._id}', this)">
+                        <span class="notification-item__icon">${n.type === 'offer_received' ? '💰' : n.type === 'offer_accepted' ? '✅' : '❌'}</span>
+                        <div>
+                            <p class="notification-item__text">${n.message}</p>
+                            <small class="notification-item__time">${timeAgo(n.createdAt)}</small>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Notification error:', error.message);
+            }
+        }
+
+        function toggleNotifications() {
+            const dd = document.getElementById('notifDropdown');
+            dd.classList.toggle('active');
+        }
+
+        async function markRead(id, el) {
+            try {
+                await api.put(`/notifications/${id}/read`);
+                el.classList.remove('notification-item--unread');
+                loadNotifications();
+            } catch (e) { }
+        }
+
+        async function markAllRead() {
+            try {
+                await api.put('/notifications/read-all');
+                loadNotifications();
+                showToast('All notifications marked as read', 'success');
+            } catch (e) { }
+        }
+
+        function timeAgo(dateStr) {
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'Just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            const days = Math.floor(hrs / 24);
+            return `${days}d ago`;
+        }
+
+        // Close notifications when clicking outside
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('notifDropdown');
+            const bell = document.querySelector('.notification-bell');
+            if (dd.classList.contains('active') && !dd.contains(e.target) && !bell.contains(e.target)) {
+                dd.classList.remove('active');
+            }
+        });
+
+        // ---- CATEGORY FILTER ----
+        function filterByCategory(btn, category) {
+            document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('searchCrop').value = category;
+            loadListings();
+        }
+
+        // ---- IMAGE URL ----
+        function getImageUrl(imagePath) {
+            if (!imagePath) return 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=200&fit=crop';
+            if (imagePath.startsWith('http')) return imagePath;
+            return IMG_BASE + imagePath;
+        }
+
+        // ---- LISTINGS ----
+        async function loadListings() {
+            const grid = document.getElementById('listingsGrid');
+            grid.innerHTML = '<div class="spinner" style="margin: 2rem auto;"></div>';
+
+            try {
+                const crop = document.getElementById('searchCrop').value;
+                const location = document.getElementById('searchLocation').value;
+
+                let url = '/listings?status=available';
+                if (crop) url += `&crop=${encodeURIComponent(crop)}`;
+                if (location) url += `&location=${encodeURIComponent(location)}`;
+
+                const response = await api.get(url);
+                currentListings = response.listings || [];
+
+                // Sort by price
+                const sortOrder = document.getElementById('priceSort').value;
+                if (sortOrder === 'low') {
+                    currentListings.sort((a, b) => a.price - b.price);
+                } else if (sortOrder === 'high') {
+                    currentListings.sort((a, b) => b.price - a.price);
+                }
+
+                if (currentListings.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <div class="empty-state__icon">🔍</div>
+                            <h3 class="empty-state__title">No listings found</h3>
+                            <p class="empty-state__text">Try adjusting your filters or check back later</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                grid.innerHTML = currentListings.map(listing => `
+                    <div class="card">
+                        <img src="${getImageUrl(listing.image)}" 
+                             alt="${listing.cropName}" class="card__image">
+                        <div class="card__content">
+                            <h3 class="card__title">${listing.cropName}</h3>
+                            <div class="card__meta">
+                                📍 ${listing.location}
+                            </div>
+                            <p style="color: var(--gray-600); margin-bottom: 0.5rem;">
+                                ${listing.quantity} ${listing.unit} available
+                            </p>
+                            <p style="color: var(--gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
+                                by ${listing.farmerId?.name || 'Farmer'}
+                            </p>
+                            <div class="card__price">
+                                ₹${listing.price} <span>per ${listing.unit}</span>
+                            </div>
+                            <div class="card__footer">
+                                <button class="btn btn--primary btn--sm" onclick="openOfferModalById('${listing._id}')">
+                                    🛒 Buy Now
+                                </button>
+                                <a href="listing.html?id=${listing._id}" class="btn btn--secondary btn--sm">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                grid.innerHTML = `<p style="color: var(--error);">Error loading listings: ${error.message}</p>`;
+            }
+        }
+
+        // ---- OFFERS ----
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        let currentModalListing = null;
+
+        function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            if (badge) {
+                if (cart.length > 0) {
+                    badge.style.display = 'inline-block';
+                    badge.textContent = cart.length;
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+        }
+
+        function updateModalTotal() {
+            if (!currentModalListing) return;
+            const qty = parseInt(document.getElementById('buyQuantity').value) || 0;
+            const total = qty * currentModalListing.price;
+            document.getElementById('modalTotalPrice').textContent = `₹${total}`;
+        }
+
+        async function loadMyOffers() {
+            try {
+                const response = await api.get('/offers/sent');
+                const offers = response.offers || [];
+                const tbody = document.getElementById('offersTableBody');
+                const noOffersMsg = document.getElementById('noOffersMessage');
+                const table = document.getElementById('offersTable');
+
+                if (offers.length === 0) {
+                    table.style.display = 'none';
+                    noOffersMsg.style.display = 'block';
+                    return;
+                }
+
+                table.style.display = 'table';
+                noOffersMsg.style.display = 'none';
+
+                tbody.innerHTML = offers.map(offer => {
+                    const farmerPhone = offer.listingId?.farmerId?.phone || '';
+                    return `
+                    <tr>
+                        <td><strong>${offer.listingId?.cropName || 'N/A'}</strong></td>
+                        <td>
+                            ${offer.listingId?.farmerId?.name || 'Unknown'}<br>
+                            <small style="color: var(--gray-500);">${offer.listingId?.farmerId?.location || ''}</small>
+                        </td>
+                        <td>${offer.quantity || 1} ${offer.listingId?.unit || ''}</td>
+                        <td><strong style="color: var(--primary-600);">₹${offer.offerPrice * (offer.quantity || 1)}</strong></td>
+                        <td><span class="badge badge--${offer.status}">${offer.status}</span></td>
+                        <td>
+                            ${offer.status === 'accepted' ? `
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="https://wa.me/91${farmerPhone}" target="_blank" class="btn btn--whatsapp btn--sm">
+                                        WhatsApp
+                                    </a>
+                                    <a href="tel:+91${farmerPhone}" class="btn btn--call btn--sm">
+                                        📞 Call
+                                    </a>
+                                </div>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `}).join('');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Open Buy Now modal
+        function openOfferModalById(listingId) {
+            const listing = currentListings.find(l => l._id === listingId);
+            if (!listing) return;
+            currentModalListing = listing;
+            
+            document.getElementById('buyListingId').value = listing._id;
+            document.getElementById('modalUnit').textContent = listing.unit;
+            document.getElementById('modalMaxQty').textContent = listing.quantity;
+            document.getElementById('buyQuantity').max = listing.quantity;
+            document.getElementById('buyQuantity').value = 1;
+            
+            document.getElementById('modalListingInfo').innerHTML = `
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <img src="${getImageUrl(listing.image)}" 
+                         style="width: 60px; height: 60px; border-radius: 0.5rem; object-fit: cover;">
+                    <div>
+                        <strong>${listing.cropName}</strong><br>
+                        <span style="color: var(--gray-500);">₹${listing.price} per ${listing.unit}</span><br>
+                        <span style="color: var(--gray-500);">📍 ${listing.location}</span>
+                    </div>
+                </div>
+            `;
+            updateModalTotal();
+            document.getElementById('offerModal').classList.add('active');
+        }
+
+        function closeOfferModal() {
+            document.getElementById('offerModal').classList.remove('active');
+            document.getElementById('buyForm').reset();
+            currentModalListing = null;
+        }
+
+        // Add to Cart Logic
+        document.getElementById('buyForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentModalListing) return;
+
+            const quantity = parseInt(document.getElementById('buyQuantity').value);
+            const message = document.getElementById('buyMessage').value;
+
+            // Check if item already in cart
+            const existingItem = cart.find(item => item.listingId === currentModalListing._id);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+                if (existingItem.quantity > currentModalListing.quantity) {
+                    existingItem.quantity = currentModalListing.quantity;
+                }
+            } else {
+                cart.push({
+                    listingId: currentModalListing._id,
+                    cropName: currentModalListing.cropName,
+                    price: currentModalListing.price,
+                    quantity: quantity,
+                    unit: currentModalListing.unit,
+                    image: currentModalListing.image,
+                    farmerId: currentModalListing.farmerId?._id || currentModalListing.farmerId,
+                    farmerName: currentModalListing.farmerId?.name || 'Farmer',
+                    message: message
+                });
+            }
+
+            saveCart();
+            showToast('Added to cart!', 'success');
+            closeOfferModal();
+        });
+
+        function renderCart() {
+            const list = document.getElementById('cartList');
+            const empty = document.getElementById('cartEmpty');
+            const table = document.getElementById('cartTable');
+            const footer = document.getElementById('cartFooter');
+            
+            if (cart.length === 0) {
+                table.style.display = 'none';
+                footer.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+
+            table.style.display = 'table';
+            footer.style.display = 'flex';
+            empty.style.display = 'none';
+
+            let totalAmount = 0;
+            list.innerHTML = cart.map((item, index) => {
+                const total = item.price * item.quantity;
+                totalAmount += total;
+                return `
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <img src="${getImageUrl(item.image)}" style="width: 40px; height: 40px; border-radius: 0.25rem; object-fit: cover;">
+                                <div>
+                                    <strong>${item.cropName}</strong><br>
+                                    <small style="color: var(--gray-500);">by ${item.farmerName}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${item.quantity} ${item.unit}</td>
+                        <td>₹${item.price}</td>
+                        <td><strong>₹${total}</strong></td>
+                        <td>
+                            <button class="btn btn--sm btn--secondary" onclick="removeFromCart(${index})" style="color: var(--error); padding:0.25rem 0.5rem; font-size:0.8rem;">Remove</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('cartTotalAmount').textContent = `₹${totalAmount}`;
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            saveCart();
+            renderCart();
+        }
+
+        function clearCartUI() {
+            if (confirm('Are you sure you want to empty your cart?')) {
+                cart = [];
+                saveCart();
+                renderCart();
+            }
+        }
+
+        async function placeOrder() {
+            if (cart.length === 0) return;
+            
+            const btn = document.querySelector('#cartFooter .btn--primary');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            let successCount = 0;
+            let failureCount = 0;
+            const remainingCart = [];
+
+            for (const item of cart) {
+                try {
+                    await api.post('/offers', {
+                        listingId: item.listingId,
+                        offerPrice: item.price,
+                        quantity: item.quantity,
+                        message: item.message || 'Cart purchase'
+                    });
+                    successCount++;
+                } catch (error) {
+                    console.error('Failed to order item:', item.cropName, error.message);
+                    failureCount++;
+                    remainingCart.push(item);
+                }
+            }
+            
+            if (successCount > 0) {
+                showToast(`${successCount} orders placed successfully!`, 'success');
+                cart = remainingCart;
+                saveCart();
+                renderCart();
+                loadStats();
+                loadMyOffers();
+            }
+
+            if (failureCount > 0) {
+                showToast(`${failureCount} items failed. Some listings may no longer be available.`, 'error');
+            } else if (successCount > 0) {
+                showSection('offers');
+            }
+
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+
+        // Debounced search on typing
+        document.getElementById('searchCrop').addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => loadListings(), 500);
+        });
+        document.getElementById('searchLocation').addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => loadListings(), 500);
+        });
+        document.getElementById('priceSort').addEventListener('change', () => loadListings());
+
+        // ---- PROFILE ----
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('profileName').value;
+            const location = document.getElementById('profileLocation').value;
+
+            try {
+                const response = await api.put('/auth/profile', { name, location });
+                saveSession(getToken(), response.user);
+                document.getElementById('userName').textContent = response.user.name;
+                showToast('Profile updated!', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        });
+    </script>
+</body>
+
+</html>

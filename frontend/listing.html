@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View produce listing details and contact farmer">
+    <title>Listing Details - FarmDirect</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar__logo">
+                <span class="navbar__logo-icon">🌾</span>
+                FarmDirect
+            </a>
+            <ul class="navbar__links">
+                <li><a href="buyer-dashboard.html" class="navbar__link">Browse Produce</a></li>
+            </ul>
+            <div class="navbar__actions" id="navActions">
+                <a href="auth.html" class="btn btn--secondary">Login</a>
+                <a href="auth.html#register" class="btn btn--primary">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main style="padding-top: 6rem; min-height: 100vh; background: var(--gray-50);">
+        <div class="container" style="max-width: 900px;">
+            <a href="javascript:history.back()"
+                style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; color: var(--gray-600);">
+                ← Back to listings
+            </a>
+
+            <div id="listingContent">
+                <div class="spinner" style="margin: 3rem auto;"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Send Offer Modal -->
+    <div class="modal-overlay" id="offerModal">
+        <div class="modal">
+            <div class="modal__header">
+                <h3>🛒 Buy Produce</h3>
+                <button class="modal__close" onclick="closeOfferModal()">×</button>
+            </div>
+            <form id="buyForm">
+                <input type="hidden" id="buyListingId">
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label class="form-label">Quantity (<span id="modalUnit">kg</span>)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="number" class="form-input" id="buyQuantity" value="1" min="1" required 
+                               oninput="updateModalTotal()" style="flex: 1;">
+                        <span style="color:var(--gray-500); font-size: 0.9rem;">Available: <span id="modalMaxQty">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea class="form-textarea" id="buyMessage" placeholder="Add a message for the farmer..."></textarea>
+                </div>
+                <div style="padding: 1rem; background: var(--primary-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--gray-600);">Total Price:</span>
+                        <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);" id="modalTotalPrice">₹0</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn--primary btn--full btn--lg">🛒 Add to Cart</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeOfferModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        let currentListing = null;
+        const IMG_BASE = 'http://127.0.0.1:5000';
+
+        function getImageUrl(imagePath) {
+            if (!imagePath) return 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=500&h=400&fit=crop';
+            if (imagePath.startsWith('http')) return imagePath;
+            return IMG_BASE + imagePath;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update nav based on auth status
+            const user = getUser();
+            if (user) {
+                document.getElementById('navActions').innerHTML = `
+                    <a href="${user.role === 'farmer' ? 'farmer-dashboard.html' : 'buyer-dashboard.html'}" class="btn btn--primary">Dashboard</a>
+                `;
+            }
+
+            // Load listing
+            const urlParams = new URLSearchParams(window.location.search);
+            const listingId = urlParams.get('id');
+            if (listingId) {
+                loadListing(listingId);
+            } else {
+                document.getElementById('listingContent').innerHTML = '<p>Listing not found</p>';
+            }
+        });
+
+        async function loadListing(id) {
+            try {
+                const response = await api.get(`/listings/${id}`);
+                currentListing = response.listing;
+
+                if (!currentListing) {
+                    document.getElementById('listingContent').innerHTML = '<p>Listing not found</p>';
+                    return;
+                }
+
+                const farmer = currentListing.farmerId || {};
+                const user = getUser();
+                const canSendOffer = user && user.role === 'buyer' && currentListing.status === 'available';
+
+                document.getElementById('listingContent').innerHTML = `
+                    <div class="card" style="overflow: hidden;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+                            <img src="${getImageUrl(currentListing.image)}" 
+                                 alt="${currentListing.cropName}"
+                                 style="width: 100%; height: 100%; min-height: 300px; object-fit: cover;">
+                            <div style="padding: 2rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                    <h1 style="font-size: 2rem;">${currentListing.cropName}</h1>
+                                    <span class="badge badge--${currentListing.status}" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                        ${currentListing.status}
+                                    </span>
+                                </div>
+                                
+                                <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">
+                                    📍 ${currentListing.location}
+                                </p>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                    <div style="padding: 1rem; background: var(--gray-50); border-radius: 0.75rem;">
+                                        <p style="color: var(--gray-500); font-size: 0.875rem;">Quantity</p>
+                                        <p style="font-size: 1.25rem; font-weight: 600;">${currentListing.quantity} ${currentListing.unit}</p>
+                                    </div>
+                                    <div style="padding: 1rem; background: var(--primary-50); border-radius: 0.75rem;">
+                                        <p style="color: var(--gray-500); font-size: 0.875rem;">Price per ${currentListing.unit}</p>
+                                        <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary-600);">₹${currentListing.price}</p>
+                                    </div>
+                                </div>
+
+                                ${currentListing.description ? `
+                                    <div style="margin-bottom: 1.5rem;">
+                                        <p style="color: var(--gray-500); font-size: 0.875rem; margin-bottom: 0.5rem;">Description</p>
+                                        <p style="color: var(--gray-700);">${currentListing.description}</p>
+                                    </div>
+                                ` : ''}
+
+                                <div style="padding: 1rem; background: var(--gray-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                                    <p style="color: var(--gray-500); font-size: 0.875rem; margin-bottom: 0.5rem;">Seller</p>
+                                    <p style="font-weight: 600;">${farmer.name || 'Farmer'}</p>
+                                    <p style="color: var(--gray-600); font-size: 0.9rem;">📍 ${farmer.location || currentListing.location}</p>
+                                </div>
+
+                                ${currentListing.status === 'available' ? `
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                        ${canSendOffer ? `
+                                            <button class="btn btn--primary btn--lg" onclick="openOfferModal()">
+                                                🛒 Buy Now
+                                            </button>
+                                        ` : ''}
+                                        <a href="https://wa.me/91${farmer.phone}" target="_blank" class="btn btn--whatsapp btn--lg">
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <a href="tel:+91${farmer.phone}" class="btn btn--call btn--lg">
+                                            📞 Call Farmer
+                                        </a>
+                                    </div>
+                                    ${!user ? `
+                                        <p style="margin-top: 1rem; color: var(--gray-500); font-size: 0.9rem;">
+                                            <a href="auth.html">Login as a buyer</a> to send offers
+                                        </p>
+                                    ` : ''}
+                                ` : `
+                                    <div style="padding: 1rem; background: var(--gray-100); border-radius: 0.75rem; text-align: center;">
+                                        <p style="color: var(--gray-600);">This listing has been sold</p>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('listingContent').innerHTML = `<p style="color: var(--error);">Error: ${error.message}</p>`;
+            }
+        }
+
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+        function updateModalTotal() {
+            if (!currentListing) return;
+            const qty = parseInt(document.getElementById('buyQuantity').value) || 0;
+            const total = qty * currentListing.price;
+            document.getElementById('modalTotalPrice').textContent = `₹${total}`;
+        }
+
+        function openOfferModal() {
+            if (!currentListing) return;
+            document.getElementById('buyListingId').value = currentListing._id;
+            document.getElementById('modalUnit').textContent = currentListing.unit;
+            document.getElementById('modalMaxQty').textContent = currentListing.quantity;
+            document.getElementById('buyQuantity').max = currentListing.quantity;
+            document.getElementById('buyQuantity').value = 1;
+            updateModalTotal();
+            document.getElementById('offerModal').classList.add('active');
+        }
+
+        function closeOfferModal() {
+            document.getElementById('offerModal').classList.remove('active');
+            document.getElementById('buyForm').reset();
+        }
+
+        document.getElementById('buyForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentListing) return;
+
+            const quantity = parseInt(document.getElementById('buyQuantity').value);
+            const message = document.getElementById('buyMessage').value;
+
+            // Check if item already in cart
+            const existingItem = cart.find(item => item.listingId === currentListing._id);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+                if (existingItem.quantity > currentListing.quantity) {
+                    existingItem.quantity = currentListing.quantity;
+                }
+            } else {
+                cart.push({
+                    listingId: currentListing._id,
+                    cropName: currentListing.cropName,
+                    price: currentListing.price,
+                    quantity: quantity,
+                    unit: currentListing.unit,
+                    image: currentListing.image,
+                    farmerId: currentListing.farmerId?._id || currentListing.farmerId,
+                    farmerName: currentListing.farmerId?.name || 'Farmer',
+                    message: message
+                });
+            }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showToast('Added to cart! Redirecting to cart...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = 'buyer-dashboard.html#cart'; // Note: dashboard logic handles section by URL hash normally? 
+                // Wait, buyer-dashboard.html showSection is called by data-section. 
+                // I should add a check for hash on DOMContentLoaded in dashboard.
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>
