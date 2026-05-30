@@ -212,6 +212,11 @@ function initAuthPage() {
                 return;
             }
             if (profile) {
+                if (profile.role === 'admin') {
+                    await clearSession();
+                    showToast('Access denied. Admins must log in through the admin panel.', 'error');
+                    return;
+                }
                 saveSession(session.access_token, profile);
                 if (isAuthPage()) {
                     redirectToDashboard(profile);
@@ -252,6 +257,12 @@ function initAuthPage() {
                 .single(), 8000);
 
             if (pError) throw pError;
+
+            if (profile.role === 'admin') {
+                await clearSession();
+                showToast('Access denied. Admins must log in through the admin panel.', 'error');
+                return;
+            }
 
             saveSession(data.session.access_token, profile);
             showToast('Welcome back!', 'success');
@@ -318,6 +329,11 @@ function initAuthPage() {
             }
 
             if (data.session && profile) {
+                if (profile.role === 'admin') {
+                    await clearSession();
+                    showToast('Access denied. Admins must log in through the admin panel.', 'error');
+                    return;
+                }
                 saveSession(data.session.access_token, profile);
                 showToast('Account created successfully!', 'success');
                 setTimeout(() => redirectToDashboard(profile), 1000);
