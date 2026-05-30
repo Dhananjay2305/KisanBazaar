@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View produce listing details and contact farmer">
+    <title>Listing Details - FarmDirect</title>
+  <script type="module" crossorigin src="/assets/listing-D5TUhv91.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-BVt79YaJ.js">
+  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar__logo">
+                <span class="navbar__logo-icon">🌾</span>
+                FarmDirect
+            </a>
+            <ul class="navbar__links">
+                <li><a href="buyer-dashboard.html" class="navbar__link">Browse Produce</a></li>
+            </ul>
+            <div class="navbar__actions" id="navActions">
+                <a href="auth.html" class="btn btn--secondary">Login</a>
+                <a href="auth.html#register" class="btn btn--primary">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main style="padding-top: 6rem; min-height: 100vh; background: var(--gray-50);">
+        <div class="container" style="max-width: 900px;">
+            <a href="javascript:history.back()"
+                style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; color: var(--gray-600);">
+                ← Back to listings
+            </a>
+
+            <div id="listingContent">
+                <div class="spinner" style="margin: 3rem auto;"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Send Offer Modal -->
+    <div class="modal-overlay" id="offerModal">
+        <div class="modal">
+            <div class="modal__header">
+                <h3>🛒 Buy Produce</h3>
+                <button class="modal__close" onclick="closeOfferModal()">×</button>
+            </div>
+            <form id="buyForm">
+                <input type="hidden" id="buyListingId">
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label class="form-label">Quantity (<span id="modalUnit">kg</span>)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="number" class="form-input" id="buyQuantity" value="1" min="1" required 
+                               oninput="updateModalTotal()" style="flex: 1;">
+                        <span style="color:var(--gray-500); font-size: 0.9rem;">Available: <span id="modalMaxQty">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea class="form-textarea" id="buyMessage" placeholder="Add a message for the farmer..."></textarea>
+                </div>
+                <div style="padding: 1rem; background: var(--primary-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--gray-600);">Total Price:</span>
+                        <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);" id="modalTotalPrice">₹0</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn--primary btn--full btn--lg">🛒 Add to Cart</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeOfferModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+</body>
+
+</html>

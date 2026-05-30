@@ -1,8 +1,35 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 
 const router = express.Router();
+
+// Configure multer for profile image uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + '-profile-' + file.originalname);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -39,7 +66,8 @@ router.post('/register', async (req, res) => {
                 name: user.name,
                 phone: user.phone,
                 role: user.role,
-                location: user.location
+                location: user.location,
+                profileImage: user.profileImage
             }
         });
     } catch (error) {
@@ -79,7 +107,8 @@ router.post('/login', async (req, res) => {
                 name: user.name,
                 phone: user.phone,
                 role: user.role,
-                location: user.location
+                location: user.location,
+                profileImage: user.profileImage
             }
         });
     } catch (error) {
@@ -109,7 +138,7 @@ router.get('/me', async (req, res) => {
 });
 
 // Update profile
-router.put('/profile', async (req, res) => {
+router.put('/profile', upload.single('profileImage'), async (req, res) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
         if (!token) {
@@ -127,6 +156,7 @@ router.put('/profile', async (req, res) => {
 
         if (name) user.name = name;
         if (location) user.location = location;
+        if (req.file) user.profileImage = `/uploads/${req.file.filename}`;
 
         await user.save();
 
@@ -137,7 +167,8 @@ router.put('/profile', async (req, res) => {
                 name: user.name,
                 phone: user.phone,
                 role: user.role,
-                location: user.location
+                location: user.location,
+                profileImage: user.profileImage
             }
         });
     } catch (error) {

@@ -60,7 +60,7 @@ router.get('/', async (req, res) => {
         }
 
         const listings = await Listing.find(query)
-            .populate('farmerId', 'name phone location')
+            .populate('farmerId', 'name phone location coordinates profileImage')
             .sort({ createdAt: -1 });
 
         res.json({ listings });
@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const listing = await Listing.findById(req.params.id)
-            .populate('farmerId', 'name phone location');
+            .populate('farmerId', 'name phone location profileImage');
 
         if (!listing) {
             return res.status(404).json({ error: 'Listing not found' });
@@ -104,7 +104,7 @@ router.post('/', auth, isFarmer, upload.single('image'), async (req, res) => {
         await listing.save();
 
         const populatedListing = await Listing.findById(listing._id)
-            .populate('farmerId', 'name phone location');
+            .populate('farmerId', 'name phone location profileImage');
 
         res.status(201).json({
             message: 'Listing created successfully',
@@ -142,7 +142,7 @@ router.put('/:id', auth, isFarmer, upload.single('image'), async (req, res) => {
         await listing.save();
 
         const updatedListing = await Listing.findById(listing._id)
-            .populate('farmerId', 'name phone location');
+            .populate('farmerId', 'name phone location profileImage');
 
         res.json({
             message: 'Listing updated successfully',

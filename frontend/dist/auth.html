@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login or Register to FarmDirect - Connect with farmers and buyers directly">
+    <title>Login / Register - FarmDirect</title>
+    <style>
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/auth-BVt79YaJ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+</head>
+
+<body>
+    <div class="auth-page">
+        <div class="auth-page__left">
+            <div class="auth-page__branding">
+                <h1>🌾 FarmDirect</h1>
+                <p>Join the revolution in Indian agriculture. Get fair prices, transparent deals, and direct
+                    connections.</p>
+                <div style="margin-top: 3rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <span style="font-size: 2rem;">👨‍🌾</span>
+                        <div>
+                            <strong style="display: block;">For Farmers</strong>
+                            <span style="opacity: 0.8;">List produce, receive offers, maximize profits</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 2rem;">🏪</span>
+                        <div>
+                            <strong style="display: block;">For Buyers</strong>
+                            <span style="opacity: 0.8;">Browse fresh produce, send offers, connect directly</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-page__right">
+            <div class="auth-form">
+                <a href="index.html"
+                    style="display: block; text-align: center; margin-bottom: 2rem; font-size: 1.5rem; font-weight: 700; color: var(--primary-700);">
+                    🌾 FarmDirect
+                </a>
+
+                <div class="auth-form__tabs">
+                    <button type="button" class="auth-form__tab active" data-tab="login" aria-selected="true">Login</button>
+                    <button type="button" class="auth-form__tab" data-tab="register" aria-selected="false">Register</button>
+                </div>
+
+                <form id="loginForm" class="auth-form__content" autocomplete="on">
+                    <div class="form-group">
+                        <label class="form-label" for="loginPhone">Phone Number</label>
+                        <input type="tel" class="form-input" id="loginPhone" name="phone" placeholder="Enter your phone number"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="loginPassword">Password</label>
+                        <input type="password" class="form-input" id="loginPassword" name="password" placeholder="Enter your password"
+                            required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full btn--lg" id="loginFormSubmit">
+                        <span class="btn-text">Login →</span>
+                    </button>
+                    <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
+                        Don't have an account? <a href="#register" id="toRegister">Register here</a>
+                    </p>
+                </form>
+
+                <form id="registerForm" class="auth-form__content" style="display: none;" autocomplete="on">
+                    <div class="form-group">
+                        <label class="form-label">I am a</label>
+                        <div class="role-toggle" role="group" aria-label="Account type">
+                            <button type="button" class="role-toggle__btn active" data-role="farmer">👨‍🌾 Farmer</button>
+                            <button type="button" class="role-toggle__btn" data-role="buyer">🏪 Buyer</button>
+                        </div>
+                        <input type="hidden" id="registerRole" name="role" value="farmer">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerName">Full Name</label>
+                        <input type="text" class="form-input" id="registerName" name="name" placeholder="Enter your full name"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerPhone">Phone Number</label>
+                        <input type="tel" class="form-input" id="registerPhone" name="phone" placeholder="Enter your phone number"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerLocation">Location <span style="color: var(--gray-400); font-weight: 400;">(optional)</span></label>
+                        <input type="text" class="form-input" id="registerLocation" name="location" placeholder="City, State">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerPassword">Password</label>
+                        <input type="password" class="form-input" id="registerPassword" name="password"
+                            placeholder="Create a password (min 6 chars)" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerConfirmPassword">Confirm Password</label>
+                        <input type="password" class="form-input" id="registerConfirmPassword" name="confirmPassword"
+                            placeholder="Confirm your password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full btn--lg" id="registerSubmit">
+                        <span class="btn-text">Create Account →</span>
+                    </button>
+                    <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
+                        Already have an account? <a href="#login" id="toLogin">Login here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+</body>
+
+</html>

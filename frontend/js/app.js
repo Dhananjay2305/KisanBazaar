@@ -1,3 +1,5 @@
+import { getUser } from './auth.js';
+
 // Main App JavaScript
 
 document.addEventListener('DOMContentLoaded', () => {

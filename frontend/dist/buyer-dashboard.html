@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse fresh produce from farmers across India">
+    <title>Browse Produce - FarmDirect</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" crossorigin src="/assets/buyer-DzJ4ExCM.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-BVt79YaJ.js">
+  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <a href="index.html" class="sidebar__logo">
+                🌾 FarmDirect
+            </a>
+            <!-- Notification Bell -->
+            <div class="notification-bell" onclick="toggleNotifications()">
+                🔔
+                <span class="notification-bell__badge" id="notifBadge" style="display:none;">0</span>
+            </div>
+            <!-- Notifications Dropdown -->
+            <div class="notification-dropdown" id="notifDropdown">
+                <div class="notification-dropdown__header">
+                    <h4>Notifications</h4>
+                    <button class="btn btn--sm" onclick="markAllRead()"
+                        style="font-size:0.75rem;padding:0.25rem 0.5rem;">Mark all read</button>
+                </div>
+                <div class="notification-dropdown__list" id="notifList">
+                    <p style="padding:1rem;color:var(--gray-500);text-align:center;">No notifications</p>
+                </div>
+            </div>
+            <nav>
+                <ul class="sidebar__nav">
+                    <li><a href="#" class="sidebar__link active" data-section="browse">🛒 Browse Produce</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="cart">🛒 My Cart <span id="cartBadge" class="badge" style="display:none;background:var(--primary-600);color:white;border-radius:50%;padding:2px 6px;font-size:0.7rem;vertical-align:middle;">0</span></a></li>
+                    <li><a href="#" class="sidebar__link" data-section="offers">📤 My Offers</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="orders">📦 My Orders</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="profile">👤 Profile</a></li>
+                </ul>
+            </nav>
+            <div style="position: absolute; bottom: 2rem; left: 1.5rem; right: 1.5rem;">
+                <div
+                    style="padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 0.75rem; margin-bottom: 1rem;">
+                    <p style="color: var(--gray-400); font-size: 0.875rem;">Logged in as</p>
+                    <p style="color: white; font-weight: 600;" id="userName">Buyer</p>
+                </div>
+                <button onclick="logout()" class="btn btn--secondary btn--full"
+                    style="color: var(--gray-300); border-color: var(--gray-600);">
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Hamburger -->
+        <button class="dashboard-hamburger" id="dashboardHamburger" onclick="toggleSidebar()">☰</button>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Stats Section -->
+            <section id="statsSection">
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:var(--primary-100);color:var(--primary-700);">📤
+                        </div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statTotalOffers">0</p>
+                            <p class="stat-card__label">Offers Sent</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:#d1fae5;color:#059669;">✅</div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statAccepted">0</p>
+                            <p class="stat-card__label">Accepted</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:var(--accent-100);color:var(--accent-600);">⏳
+                        </div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statPending">0</p>
+                            <p class="stat-card__label">Pending</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card__icon" style="background:#fee2e2;color:#dc2626;">❌</div>
+                        <div class="stat-card__info">
+                            <p class="stat-card__value" id="statRejected">0</p>
+                            <p class="stat-card__label">Rejected</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Browse Section -->
+            <section id="browseSection">
+                <div class="page-header">
+                    <h1 class="page-title">Browse Fresh Produce</h1>
+                </div>
+
+                <!-- Category Pills -->
+                <div class="category-pills" id="categoryPills">
+                    <button class="category-pill active" data-category="" onclick="filterByCategory(this, '')">🌿
+                        All</button>
+                    <button class="category-pill" data-category="vegetables"
+                        onclick="filterByCategory(this, 'vegetables')">🥬 Vegetables</button>
+                    <button class="category-pill" data-category="fruits" onclick="filterByCategory(this, 'fruits')">🍎
+                        Fruits</button>
+                    <button class="category-pill" data-category="grains" onclick="filterByCategory(this, 'grains')">🌾
+                        Grains</button>
+                    <button class="category-pill" data-category="spices" onclick="filterByCategory(this, 'spices')">🌶️
+                        Spices</button>
+                    <button class="category-pill" data-category="pulses" onclick="filterByCategory(this, 'pulses')">🫘
+                        Pulses</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+                    <input type="text" class="form-input" id="searchCrop" placeholder="🔍 Search by crop name..." style="flex: 1; min-width: 200px;">
+                    <div style="display: flex; gap: 0.5rem; flex: 1; min-width: 250px;">
+                        <input type="text" class="form-input" id="searchLocation" placeholder="📍 Filter by location..." style="flex: 1;">
+                        <button class="btn btn--outline btn--sm" onclick="detectUserLocation()" title="Detect My Location">📍</button>
+                    </div>
+                    <select class="form-select" id="priceSort" style="width: auto;">
+                        <option value="">Sort by</option>
+                        <option value="low">Price: Low to High</option>
+                        <option value="high">Price: High to Low</option>
+                        <option value="distance">📍 Nearest Farmers</option>
+                    </select>
+                    <button class="btn btn--primary" onclick="loadListings()">Apply</button>
+                </div>
+
+                <div class="listings-grid" id="listingsGrid">
+                    <!-- Listings will be loaded here -->
+                </div>
+            </section>
+
+            <!-- My Cart Section -->
+            <section id="cartSection" style="display:none;">
+                <div class="page-header">
+                    <h1 class="page-title">Shopping Cart</h1>
+                    <button class="btn btn--secondary" onclick="clearCartUI()">Empty Cart</button>
+                </div>
+                <div class="card" style="padding:0; overflow:hidden;">
+                    <table class="table" id="cartTable">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartList">
+                            <!-- Cart items added dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="cartEmpty" style="padding:3rem; text-align:center; display:none;">
+                        <p style="font-size:1.5rem; color:var(--gray-400); margin-bottom:1rem;">Your cart is empty</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Go Shopping</button>
+                    </div>
+                </div>
+                <div id="cartFooter" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:center; background:white; padding:1.5rem; border-radius:1rem; box-shadow:var(--shadow-md);">
+                    <div style="font-size:1.25rem;">
+                        <span style="color:var(--gray-600);">Total Amount:</span>
+                        <span style="font-weight:700; color:var(--primary-600); margin-left:1rem;" id="cartTotalAmount">₹0</span>
+                    </div>
+                    <button class="btn btn--primary btn--lg" onclick="placeOrder()">📦 Place Order Now</button>
+                </div>
+            </section>
+
+            <!-- My Offers Section -->
+            <section id="offersSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Sent Offers</h1>
+                </div>
+                <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
+                    <table class="offers-table" id="offersTable">
+                        <thead>
+                            <tr>
+                                <th>Crop</th>
+                                <th>Farmer</th>
+                                <th>Listed Price</th>
+                                <th>My Offer</th>
+                                <th>Status</th>
+                                <th>Contact</th>
+                            </tr>
+                        </thead>
+                        <tbody id="offersTableBody">
+                            <!-- Offers will be loaded here -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="noOffersMessage" style="display: none;">
+                        <div class="empty-state__icon">📤</div>
+                        <h3 class="empty-state__title">No offers sent yet</h3>
+                        <p class="empty-state__text">Browse produce and send your first offer!</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Browse Produce</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- My Orders Section -->
+            <section id="ordersSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Orders</h1>
+                </div>
+                <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
+                    <table class="offers-table" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Orders will be loaded here -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="noOrdersMessage" style="display: none;">
+                        <div class="empty-state__icon">📦</div>
+                        <h3 class="empty-state__title">No orders yet</h3>
+                        <p class="empty-state__text">Start shopping to see your orders here!</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Browse Produce</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profileSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Profile</h1>
+                </div>
+                <div class="card" style="max-width: 600px; padding: 2rem;">
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-input" id="profileName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-input" id="profilePhone" disabled
+                                style="background:var(--gray-100);cursor:not-allowed;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-input" id="profileRole" disabled
+                                style="background:var(--gray-100);cursor:not-allowed;text-transform:capitalize;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="profileLocation" placeholder="City, State">
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--lg">
+                            💾 Save Changes
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Send Offer Modal -->
+    <div class="modal-overlay" id="offerModal">
+        <div class="modal">
+            <div class="modal__header">
+                <h3>🛒 Buy Produce</h3>
+                <button class="modal__close" onclick="closeOfferModal()">×</button>
+            </div>
+            <div id="modalListingInfo"
+                style="padding: 1rem; background: var(--gray-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                <!-- Listing info will be inserted here -->
+            </div>
+            <form id="buyForm">
+                <input type="hidden" id="buyListingId">
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label class="form-label">Quantity (<span id="modalUnit">kg</span>)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="number" class="form-input" id="buyQuantity" value="1" min="1" required 
+                               oninput="updateModalTotal()" style="flex: 1;">
+                        <span style="color:var(--gray-500); font-size: 0.9rem;">Available: <span id="modalMaxQty">0</span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea class="form-textarea" id="buyMessage" placeholder="Add a message for the farmer..."></textarea>
+                </div>
+                <div style="padding: 1rem; background: var(--primary-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--gray-600);">Total Price:</span>
+                        <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);" id="modalTotalPrice">₹0</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn--primary btn--full btn--lg">🛒 Add to Cart</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeOfferModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+</body>
+
+</html>

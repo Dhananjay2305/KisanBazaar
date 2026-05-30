@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-checking">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Farmer Dashboard - Manage your produce listings and offers">
     <title>Farmer Dashboard - FarmDirect</title>
+    <style>
+        html.auth-checking body {
+            visibility: hidden;
+        }
+    </style>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -36,6 +41,7 @@
                 <ul class="sidebar__nav">
                     <li><a href="#" class="sidebar__link active" data-section="listings">📦 My Listings</a></li>
                     <li><a href="#" class="sidebar__link" data-section="offers">💰 Offers Received</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="received_orders">📦 Orders Received</a></li>
                     <li><a href="#" class="sidebar__link" data-section="add">➕ Add Listing</a></li>
                     <li><a href="#" class="sidebar__link" data-section="profile">👤 Profile</a></li>
                 </ul>
@@ -140,6 +146,36 @@
                 </div>
             </section>
 
+            <!-- Orders Received Section -->
+            <section id="receivedOrdersSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">Orders Received</h1>
+                </div>
+                <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
+                    <table class="offers-table" id="receivedOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Buyer</th>
+                                <th>Items</th>
+                                <th>Total Val</th>
+                                <th>Address</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receivedOrdersTableBody">
+                            <!-- Orders will be loaded here -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="noReceivedOrdersMessage" style="display: none;">
+                        <div class="empty-state__icon">📦</div>
+                        <h3 class="empty-state__title">No orders yet</h3>
+                        <p class="empty-state__text">Paid orders from buyers will appear here</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- Add Listing Section -->
             <section id="addSection" style="display: none;">
                 <div class="page-header">
@@ -148,9 +184,20 @@
                 <div class="card" style="max-width: 600px; padding: 2rem;">
                     <form id="addListingForm">
                         <div class="form-group">
-                            <label class="form-label">Crop Name *</label>
+                            <label class="form-label">Product Name *</label>
                             <input type="text" class="form-input" id="cropName"
                                 placeholder="e.g., Tomatoes, Wheat, Rice" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category *</label>
+                            <select class="form-select" id="category" required>
+                                <option value="vegetables">Vegetables</option>
+                                <option value="fruits">Fruits</option>
+                                <option value="grains">Grains</option>
+                                <option value="spices">Spices</option>
+                                <option value="pulses">Pulses</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
                         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
                             <div class="form-group">
@@ -186,11 +233,19 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Product Image</label>
-                            <input type="file" class="form-input" id="image" accept="image/*">
+                            <img id="listingImagePreview" alt="Selected product preview"
+                                style="display: none; max-width: 220px; max-height: 160px; object-fit: cover; border-radius: var(--radius-lg); margin-bottom: 0.75rem; border: 1px solid var(--gray-200);">
+                            <label class="btn btn--secondary" style="cursor: pointer; display: inline-block;">
+                                Choose image from device
+                                <input type="file" id="image" accept="image/jpeg,image/png,image/webp,image/gif"
+                                    style="display: none;">
+                            </label>
+                            <p id="listingImageName" style="margin-top: 0.5rem; color: var(--gray-500); font-size: 0.875rem;"></p>
                         </div>
+                        <p id="listingFormError" style="display: none; color: var(--error-600, #dc2626); font-size: 0.875rem; margin-bottom: 1rem;"></p>
                         <div style="display: flex; gap: 1rem;">
-                            <button type="submit" class="btn btn--primary btn--lg">
-                                ✓ Create Listing
+                            <button type="submit" class="btn btn--primary btn--lg" id="createListingBtn">
+                                <span class="btn-text">✓ Create Listing</span>
                             </button>
                             <button type="button" class="btn btn--secondary btn--lg" onclick="showSection('listings')">
                                 Cancel
@@ -207,6 +262,15 @@
                 </div>
                 <div class="card" style="max-width: 600px; padding: 2rem;">
                     <form id="profileForm">
+                        <div class="form-group" style="text-align: center; margin-bottom: 2rem;">
+                            <img id="profileImagePreview" src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&h=200&fit=crop" alt="Profile Image" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 3px solid var(--primary-100);">
+                            <div>
+                                <label class="btn btn--sm btn--secondary" style="cursor: pointer;">
+                                    Change Photo
+                                    <input type="file" id="profileImageInput" accept="image/*" style="display: none;" onchange="previewProfileImage(event)">
+                                </label>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Full Name</label>
                             <input type="text" class="form-input" id="profileName" required>
@@ -237,30 +301,53 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script>
-        const IMG_BASE = 'http://127.0.0.1:5000';
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module">
+        import { resolveImageUrl, showToast } from './js/api.js';
+        import { bootstrapDashboardUser } from './js/auth.js';
 
-        // Check authentication
-        document.addEventListener('DOMContentLoaded', () => {
-            const user = getUser();
-            if (!user || user.role !== 'farmer') {
-                window.location.href = 'auth.html';
-                return;
+        // Check authentication (wait for Supabase session before redirecting)
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const user = await bootstrapDashboardUser('farmer');
+                if (!user) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.replace('auth.html');
+                    return;
+                }
+
+                document.getElementById('userName').textContent = user.name;
+
+                // Pre-fill profile
+                document.getElementById('profileName').value = user.name;
+                document.getElementById('profilePhone').value = user.phone;
+                document.getElementById('profileRole').value = user.role;
+                document.getElementById('profileLocation').value = user.location || '';
+                if (user.profile_image) {
+                    document.getElementById('profileImagePreview').src = resolveImageUrl(user.profile_image);
+                }
+
+                document.getElementById('image').addEventListener('change', previewListingImage);
+
+                loadStats();
+                loadMyListings();
+                loadOffers();
+                loadNotifications();
+
+                // Handle initial section from hash on reload
+                const validSections = ['listings', 'offers', 'received_orders', 'add', 'profile'];
+                const initialSection = window.location.hash.replace('#', '');
+                if (validSections.includes(initialSection)) {
+                    showSection(initialSection);
+                }
+            } catch (err) {
+                console.error("Farmer dashboard initialization failed:", err);
+                showToast(err.message || 'Connection offline. Retrying in background...', 'error');
+            } finally {
+                document.documentElement.classList.remove('auth-checking');
             }
-            document.getElementById('userName').textContent = user.name;
-
-            // Pre-fill profile
-            document.getElementById('profileName').value = user.name;
-            document.getElementById('profilePhone').value = user.phone;
-            document.getElementById('profileRole').value = user.role;
-            document.getElementById('profileLocation').value = user.location || '';
-
-            loadStats();
-            loadMyListings();
-            loadOffers();
-            loadNotifications();
         });
 
         // Navigation
@@ -272,14 +359,35 @@
             });
         });
 
+        // Hashchange listener for back/forward navigation and reload persistence
+        window.addEventListener('hashchange', () => {
+            const validSections = ['listings', 'offers', 'received_orders', 'add', 'profile'];
+            const sec = window.location.hash.replace('#', '');
+            if (validSections.includes(sec)) {
+                showSection(sec);
+            }
+        });
+
         function showSection(sectionName) {
+            const validSections = ['listings', 'offers', 'received_orders', 'add', 'profile'];
+            if (!validSections.includes(sectionName)) return;
+
             document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('active'));
             document.querySelector(`[data-section="${sectionName}"]`)?.classList.add('active');
 
             document.getElementById('listingsSection').style.display = sectionName === 'listings' ? 'block' : 'none';
             document.getElementById('offersSection').style.display = sectionName === 'offers' ? 'block' : 'none';
+            document.getElementById('receivedOrdersSection').style.display = sectionName === 'received_orders' ? 'block' : 'none';
             document.getElementById('addSection').style.display = sectionName === 'add' ? 'block' : 'none';
             document.getElementById('profileSection').style.display = sectionName === 'profile' ? 'block' : 'none';
+
+            if (sectionName === 'received_orders') {
+                loadReceivedOrders();
+            }
+
+            if (window.location.hash !== `#${sectionName}`) {
+                window.location.hash = sectionName;
+            }
         }
 
         // Mobile sidebar toggle
@@ -291,10 +399,10 @@
         async function loadStats() {
             try {
                 const stats = await api.get('/stats/farmer');
-                document.getElementById('statTotalListings').textContent = stats.totalListings;
-                document.getElementById('statActiveListings').textContent = stats.activeListings;
-                document.getElementById('statTotalOffers').textContent = stats.totalOffers;
-                document.getElementById('statRevenue').textContent = `₹${stats.totalRevenue.toLocaleString('en-IN')}`;
+                document.getElementById('statTotalListings').textContent = stats.total_listings;
+                document.getElementById('statActiveListings').textContent = stats.active_listings;
+                document.getElementById('statTotalOffers').textContent = stats.total_offers;
+                document.getElementById('statRevenue').textContent = `₹${stats.total_revenue.toLocaleString('en-IN')}`;
             } catch (error) {
                 console.error('Stats error:', error.message);
             }
@@ -307,9 +415,9 @@
                 const badge = document.getElementById('notifBadge');
                 const list = document.getElementById('notifList');
 
-                if (data.unreadCount > 0) {
+                if (data.unread_count > 0) {
                     badge.style.display = 'flex';
-                    badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
+                    badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
                 } else {
                     badge.style.display = 'none';
                 }
@@ -320,11 +428,11 @@
                 }
 
                 list.innerHTML = data.notifications.slice(0, 20).map(n => `
-                    <div class="notification-item ${n.read ? '' : 'notification-item--unread'}" onclick="markRead('${n._id}', this)">
+                    <div class="notification-item ${n.is_read ? '' : 'notification-item--unread'}" onclick="markRead('${n.id}', this)">
                         <span class="notification-item__icon">${n.type === 'offer_received' ? '💰' : n.type === 'offer_accepted' ? '✅' : '❌'}</span>
                         <div>
                             <p class="notification-item__text">${n.message}</p>
-                            <small class="notification-item__time">${timeAgo(n.createdAt)}</small>
+                            <small class="notification-item__time">${timeAgo(n.created_at)}</small>
                         </div>
                     </div>
                 `).join('');
@@ -375,10 +483,40 @@
         });
 
         // ---- LISTINGS ----
-        function getImageUrl(imagePath) {
-            if (!imagePath) return 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=200&fit=crop';
-            if (imagePath.startsWith('http')) return imagePath;
-            return IMG_BASE + imagePath;
+        function previewListingImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('listingImagePreview');
+            const nameEl = document.getElementById('listingImageName');
+
+            if (!file) {
+                preview.style.display = 'none';
+                preview.removeAttribute('src');
+                nameEl.textContent = '';
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Please choose a JPEG, PNG, WebP, or GIF image.', 'error');
+                event.target.value = '';
+                preview.style.display = 'none';
+                nameEl.textContent = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            nameEl.textContent = file.name;
+        }
+
+        function resetListingImagePreview() {
+            const preview = document.getElementById('listingImagePreview');
+            preview.style.display = 'none';
+            preview.removeAttribute('src');
+            document.getElementById('listingImageName').textContent = '';
         }
 
         async function loadMyListings() {
@@ -401,11 +539,11 @@
 
                 grid.innerHTML = listings.map(listing => `
                     <div class="card">
-                        <img src="${getImageUrl(listing.image)}" 
-                             alt="${listing.cropName}" class="card__image">
+                        <img src="${resolveImageUrl(listing.image)}" 
+                             alt="${listing.crop_name}" class="card__image">
                         <div class="card__content">
                             <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <h3 class="card__title">${listing.cropName}</h3>
+                                <h3 class="card__title">${listing.crop_name}</h3>
                                 <span class="badge badge--${listing.status}">${listing.status}</span>
                             </div>
                             <div class="card__meta">
@@ -418,10 +556,10 @@
                                 ₹${listing.price} <span>per ${listing.unit}</span>
                             </div>
                             <div class="card__footer">
-                                <button class="btn btn--secondary btn--sm" onclick="toggleStatus('${listing._id}', '${listing.status}')">
+                                <button class="btn btn--secondary btn--sm" onclick="toggleStatus('${listing.id}', '${listing.status}')">
                                     ${listing.status === 'available' ? '✓ Mark Sold' : '↺ Mark Available'}
                                 </button>
-                                <button class="btn btn--error btn--sm" onclick="deleteListing('${listing._id}')">
+                                <button class="btn btn--error btn--sm" onclick="deleteListing('${listing.id}')">
                                     🗑 Delete
                                 </button>
                             </div>
@@ -453,23 +591,23 @@
 
                 tbody.innerHTML = offers.map(offer => `
                     <tr>
-                        <td><strong>${offer.listingId?.cropName || 'N/A'}</strong></td>
+                        <td><strong>${offer.listing?.crop_name || 'N/A'}</strong></td>
                         <td>
-                            ${offer.buyerId?.name || 'Unknown'}<br>
-                            <small style="color: var(--gray-500);">${offer.buyerId?.phone || ''}</small>
+                            ${offer.buyer?.name || 'Unknown'}<br>
+                            <small style="color: var(--gray-500);">${offer.buyer?.phone || ''}</small>
                         </td>
-                        <td>₹${offer.listingId?.price || 0}</td>
-                        <td><strong style="color: var(--primary-600);">₹${offer.offerPrice}</strong></td>
+                        <td>₹${offer.listing?.price || 0}</td>
+                        <td><strong style="color: var(--primary-600);">₹${offer.offer_price}</strong></td>
                         <td style="max-width: 200px;">${offer.message || '-'}</td>
                         <td><span class="badge badge--${offer.status}">${offer.status}</span></td>
                         <td>
                             ${offer.status === 'pending' ? `
                                 <div class="offers-table__actions">
-                                    <button class="btn btn--success btn--sm" onclick="acceptOffer('${offer._id}')">✓ Accept</button>
-                                    <button class="btn btn--error btn--sm" onclick="rejectOffer('${offer._id}')">✗ Reject</button>
+                                    <button class="btn btn--success btn--sm" onclick="acceptOffer('${offer.id}')">✓ Accept</button>
+                                    <button class="btn btn--error btn--sm" onclick="rejectOffer('${offer.id}')">✗ Reject</button>
                                 </div>
                             ` : offer.status === 'accepted' ? `
-                                <a href="https://wa.me/91${offer.buyerId?.phone}" target="_blank" class="btn btn--whatsapp btn--sm">
+                                <a href="https://wa.me/91${offer.buyer?.phone}" target="_blank" class="btn btn--whatsapp btn--sm">
                                     WhatsApp
                                 </a>
                             ` : '-'}
@@ -481,32 +619,132 @@
             }
         }
 
+        async function loadReceivedOrders() {
+            try {
+                const response = await api.get('/orders/farmer');
+                const orders = response.orders || [];
+                const tbody = document.getElementById('receivedOrdersTableBody');
+                const noOrdersMsg = document.getElementById('noReceivedOrdersMessage');
+                const table = document.getElementById('receivedOrdersTable');
+
+                if (orders.length === 0) {
+                    table.style.display = 'none';
+                    noOrdersMsg.style.display = 'block';
+                    return;
+                }
+
+                table.style.display = 'table';
+                noOrdersMsg.style.display = 'none';
+
+                tbody.innerHTML = orders.map(order => {
+                    const totalVal = order.total_amount;
+                    const status = order.status || 'pending';
+                    const orderIdShort = order.id.substring(order.id.length - 8);
+                    
+                    return `
+                    <tr>
+                        <td><small>#${orderIdShort}</small></td>
+                        <td>
+                            ${order.buyer?.name || 'Unknown'}<br>
+                            <small style="color: var(--gray-500);">${order.buyer?.phone || ''}</small>
+                        </td>
+                        <td>
+                            ${order.items.map(item => `${item.crop_name} (${item.quantity}${item.unit})`).join(', ')}
+                        </td>
+                        <td><strong>₹${totalVal}</strong></td>
+                        <td style="max-width: 200px;"><small>${order.shipping_address}</small></td>
+                        <td>
+                            <span class="badge badge--${status}">${status}</span>
+                            ${order.payment_status === 'completed' ? '<br><small style="color:var(--success-600)">● Paid</small>' : ''}
+                        </td>
+                        <td>
+                            <div class="offers-table__actions">
+                                ${status === 'pending' ? `
+                                    <button class="btn btn--success btn--sm" onclick="updateOrderStatus('${order.id}', 'accepted')">✓ Accept</button>
+                                    <button class="btn btn--error btn--sm" onclick="updateOrderStatus('${order.id}', 'rejected')">✗ Reject</button>
+                                ` : status === 'accepted' ? `
+                                    <button class="btn btn--primary btn--sm" onclick="updateOrderStatus('${order.id}', 'shipped')">🚢 Ship</button>
+                                ` : status === 'shipped' ? `
+                                    <button class="btn btn--accent btn--sm" onclick="updateOrderStatus('${order.id}', 'delivered')">✅ Deliver</button>
+                                ` : '-'}
+                            </div>
+                        </td>
+                    </tr>
+                `}).join('');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                const response = await api.request(`/orders/${orderId}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: newStatus })
+                });
+                showToast(`Order #${orderId.substring(orderId.length - 8)} marked as ${newStatus}`, 'success');
+                loadReceivedOrders();
+                loadStats();
+            } catch (error) {
+                console.error('Status Update Error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        function setListingSubmitLoading(isLoading) {
+            const btn = document.getElementById('createListingBtn');
+            const btnText = btn?.querySelector('.btn-text');
+            if (!btn || !btnText) return;
+            btn.disabled = isLoading;
+            btnText.innerHTML = isLoading
+                ? '<span class="loading-spinner"></span> Uploading...'
+                : '✓ Create Listing';
+        }
+
+        function showListingFormError(message) {
+            const el = document.getElementById('listingFormError');
+            if (!message) {
+                el.style.display = 'none';
+                el.textContent = '';
+                return;
+            }
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
         // Add listing
         document.getElementById('addListingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            showListingFormError('');
 
             const formData = new FormData();
-            formData.append('cropName', document.getElementById('cropName').value);
+            formData.append('cropName', document.getElementById('cropName').value.trim());
+            formData.append('category', document.getElementById('category').value);
             formData.append('quantity', document.getElementById('quantity').value);
             formData.append('unit', document.getElementById('unit').value);
             formData.append('price', document.getElementById('price').value);
-            formData.append('location', document.getElementById('location').value);
-            formData.append('description', document.getElementById('description').value);
+            formData.append('location', document.getElementById('location').value.trim());
+            formData.append('description', document.getElementById('description').value.trim());
 
             const imageFile = document.getElementById('image').files[0];
             if (imageFile) {
                 formData.append('image', imageFile);
             }
 
+            setListingSubmitLoading(true);
             try {
                 await api.postForm('/listings', formData);
                 showToast('Listing created successfully!', 'success');
                 e.target.reset();
+                resetListingImagePreview();
                 showSection('listings');
                 loadMyListings();
                 loadStats();
             } catch (error) {
+                showListingFormError(error.message);
                 showToast(error.message, 'error');
+            } finally {
+                setListingSubmitLoading(false);
             }
         });
 
@@ -561,13 +799,31 @@
         }
 
         // ---- PROFILE ----
+        function previewProfileImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profileImagePreview').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = document.getElementById('profileName').value;
-            const location = document.getElementById('profileLocation').value;
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('profileName').value);
+            formData.append('location', document.getElementById('profileLocation').value);
+            
+            const imageFile = document.getElementById('profileImageInput').files[0];
+            if (imageFile) {
+                formData.append('profileImage', imageFile);
+            }
 
             try {
-                const response = await api.put('/auth/profile', { name, location });
+                const response = await api.putForm('/auth/profile', formData);
                 saveSession(getToken(), response.user);
                 document.getElementById('userName').textContent = response.user.name;
                 showToast('Profile updated!', 'success');
@@ -575,6 +831,20 @@
                 showToast(error.message, 'error');
             }
         });
+
+        // Expose functions to window for HTML event handlers
+        window.showSection = showSection;
+        window.toggleSidebar = toggleSidebar;
+        window.toggleNotifications = toggleNotifications;
+        window.markRead = markRead;
+        window.markAllRead = markAllRead;
+        window.toggleStatus = toggleStatus;
+        window.deleteListing = deleteListing;
+        window.acceptOffer = acceptOffer;
+        window.rejectOffer = rejectOffer;
+        window.updateOrderStatus = updateOrderStatus;
+        window.previewProfileImage = previewProfileImage;
+        window.previewListingImage = previewListingImage;
     </script>
 </body>
 

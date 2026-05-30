@@ -79,14 +79,20 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script>
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module">
         let currentListing = null;
-        const IMG_BASE = 'http://127.0.0.1:5000';
+        const IMG_BASE = 'http://127.0.0.1:5001';
 
         function getImageUrl(imagePath) {
             if (!imagePath) return 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=500&h=400&fit=crop';
+            if (imagePath.startsWith('http')) return imagePath;
+            return IMG_BASE + imagePath;
+        }
+
+        function getAvatarUrl(imagePath, name = 'Farmer') {
+            if (!imagePath) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff`;
             if (imagePath.startsWith('http')) return imagePath;
             return IMG_BASE + imagePath;
         }
@@ -120,7 +126,7 @@
                     return;
                 }
 
-                const farmer = currentListing.farmerId || {};
+                const farmer = currentListing.farmer || {};
                 const user = getUser();
                 const canSendOffer = user && user.role === 'buyer' && currentListing.status === 'available';
 
@@ -128,11 +134,11 @@
                     <div class="card" style="overflow: hidden;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
                             <img src="${getImageUrl(currentListing.image)}" 
-                                 alt="${currentListing.cropName}"
+                                 alt="${currentListing.crop_name}"
                                  style="width: 100%; height: 100%; min-height: 300px; object-fit: cover;">
                             <div style="padding: 2rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                                    <h1 style="font-size: 2rem;">${currentListing.cropName}</h1>
+                                    <h1 style="font-size: 2rem;">${currentListing.crop_name}</h1>
                                     <span class="badge badge--${currentListing.status}" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
                                         ${currentListing.status}
                                     </span>
@@ -162,8 +168,13 @@
 
                                 <div style="padding: 1rem; background: var(--gray-50); border-radius: 0.75rem; margin-bottom: 1.5rem;">
                                     <p style="color: var(--gray-500); font-size: 0.875rem; margin-bottom: 0.5rem;">Seller</p>
-                                    <p style="font-weight: 600;">${farmer.name || 'Farmer'}</p>
-                                    <p style="color: var(--gray-600); font-size: 0.9rem;">📍 ${farmer.location || currentListing.location}</p>
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <img src="${getAvatarUrl(farmer.profile_image, farmer.name)}" alt="${farmer.name || 'Farmer'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                                        <div>
+                                            <p style="font-weight: 600; margin-bottom: 0.25rem;">${farmer.name || 'Farmer'}</p>
+                                            <p style="color: var(--gray-600); font-size: 0.9rem; margin: 0;">📍 ${farmer.location || currentListing.location}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 ${currentListing.status === 'available' ? `
@@ -210,7 +221,7 @@
 
         function openOfferModal() {
             if (!currentListing) return;
-            document.getElementById('buyListingId').value = currentListing._id;
+            document.getElementById('buyListingId').value = currentListing.id;
             document.getElementById('modalUnit').textContent = currentListing.unit;
             document.getElementById('modalMaxQty').textContent = currentListing.quantity;
             document.getElementById('buyQuantity').max = currentListing.quantity;
@@ -232,7 +243,7 @@
             const message = document.getElementById('buyMessage').value;
 
             // Check if item already in cart
-            const existingItem = cart.find(item => item.listingId === currentListing._id);
+            const existingItem = cart.find(item => item.listing_id === currentListing.id);
             if (existingItem) {
                 existingItem.quantity += quantity;
                 if (existingItem.quantity > currentListing.quantity) {
@@ -240,14 +251,15 @@
                 }
             } else {
                 cart.push({
-                    listingId: currentListing._id,
-                    cropName: currentListing.cropName,
+                    listing_id: currentListing.id,
+                    crop_name: currentListing.crop_name,
                     price: currentListing.price,
                     quantity: quantity,
                     unit: currentListing.unit,
                     image: currentListing.image,
-                    farmerId: currentListing.farmerId?._id || currentListing.farmerId,
-                    farmerName: currentListing.farmerId?.name || 'Farmer',
+                    farmer_id: currentListing.farmer_id || currentListing.farmer?.id,
+                    farmer_name: currentListing.farmer?.name || 'Farmer',
+                    farmer_image: currentListing.farmer?.profile_image || '',
                     message: message
                 });
             }
@@ -256,11 +268,14 @@
             showToast('Added to cart! Redirecting to cart...', 'success');
             
             setTimeout(() => {
-                window.location.href = 'buyer-dashboard.html#cart'; // Note: dashboard logic handles section by URL hash normally? 
-                // Wait, buyer-dashboard.html showSection is called by data-section. 
-                // I should add a check for hash on DOMContentLoaded in dashboard.
+                window.location.href = 'buyer-dashboard.html#cart'; 
             }, 1000);
         });
+
+        // Expose functions to window
+        window.closeOfferModal = closeOfferModal;
+        window.openOfferModal = openOfferModal;
+        window.updateModalTotal = updateModalTotal;
     </script>
 </body>
 

@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-checking">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Browse fresh produce from farmers across India">
     <title>Browse Produce - FarmDirect</title>
+    <style>
+        html.auth-checking body {
+            visibility: hidden;
+        }
+    </style>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 
 <body>
@@ -37,6 +44,7 @@
                     <li><a href="#" class="sidebar__link active" data-section="browse">🛒 Browse Produce</a></li>
                     <li><a href="#" class="sidebar__link" data-section="cart">🛒 My Cart <span id="cartBadge" class="badge" style="display:none;background:var(--primary-600);color:white;border-radius:50%;padding:2px 6px;font-size:0.7rem;vertical-align:middle;">0</span></a></li>
                     <li><a href="#" class="sidebar__link" data-section="offers">📤 My Offers</a></li>
+                    <li><a href="#" class="sidebar__link" data-section="orders">📦 My Orders</a></li>
                     <li><a href="#" class="sidebar__link" data-section="profile">👤 Profile</a></li>
                 </ul>
             </nav>
@@ -117,15 +125,19 @@
                 </div>
 
                 <!-- Filters -->
-                <div class="filter-bar">
-                    <input type="text" class="form-input" id="searchCrop" placeholder="🔍 Search by crop name...">
-                    <input type="text" class="form-input" id="searchLocation" placeholder="📍 Filter by location...">
-                    <select class="form-select" id="priceSort">
-                        <option value="">Sort by Price</option>
+                <div class="filter-bar" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+                    <input type="text" class="form-input" id="searchCrop" placeholder="🔍 Search by crop name..." style="flex: 1; min-width: 200px;">
+                    <div style="display: flex; gap: 0.5rem; flex: 1; min-width: 250px;">
+                        <input type="text" class="form-input" id="searchLocation" placeholder="📍 Filter by location..." style="flex: 1;">
+                        <button class="btn btn--outline btn--sm" onclick="detectUserLocation()" title="Detect My Location">📍</button>
+                    </div>
+                    <select class="form-select" id="priceSort" style="width: auto;">
+                        <option value="">Sort by</option>
                         <option value="low">Price: Low to High</option>
                         <option value="high">Price: High to Low</option>
+                        <option value="distance">📍 Nearest Farmers</option>
                     </select>
-                    <button class="btn btn--primary" onclick="loadListings()">Apply Filters</button>
+                    <button class="btn btn--primary" onclick="loadListings()">Apply</button>
                 </div>
 
                 <div class="listings-grid" id="listingsGrid">
@@ -193,6 +205,36 @@
                         <div class="empty-state__icon">📤</div>
                         <h3 class="empty-state__title">No offers sent yet</h3>
                         <p class="empty-state__text">Browse produce and send your first offer!</p>
+                        <button class="btn btn--primary" onclick="showSection('browse')">Browse Produce</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- My Orders Section -->
+            <section id="ordersSection" style="display: none;">
+                <div class="page-header">
+                    <h1 class="page-title">My Orders</h1>
+                </div>
+                <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
+                    <table class="offers-table" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Orders will be loaded here -->
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="noOrdersMessage" style="display: none;">
+                        <div class="empty-state__icon">📦</div>
+                        <h3 class="empty-state__title">No orders yet</h3>
+                        <p class="empty-state__text">Start shopping to see your orders here!</p>
                         <button class="btn btn--primary" onclick="showSection('browse')">Browse Produce</button>
                     </div>
                 </div>
@@ -274,37 +316,82 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script>
-        const IMG_BASE = 'http://127.0.0.1:5000';
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module">
+        import { resolveImageUrl, showToast } from './js/api.js';
+        import { bootstrapDashboardUser } from './js/auth.js';
+
         let searchDebounce = null;
         let currentListings = [];
+        let userCoords = null;
 
-        // Check authentication
-        document.addEventListener('DOMContentLoaded', () => {
-            const user = getUser();
-            if (!user || user.role !== 'buyer') {
-                window.location.href = 'auth.html';
+        function detectUserLocation() {
+            if (!navigator.geolocation) {
+                showToast('Geolocation not supported', 'error');
                 return;
             }
-            document.getElementById('userName').textContent = user.name;
+            showToast('Detecting location...', 'info');
+            navigator.geolocation.getCurrentPosition(pos => {
+                userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                showToast('Location updated! Sorting by distance...', 'success');
+                document.getElementById('priceSort').value = 'distance';
+                loadListings();
+            }, err => {
+                showToast('Location error: ' + err.message, 'error');
+            });
+        }
 
-            // Pre-fill profile
-            document.getElementById('profileName').value = user.name;
-            document.getElementById('profilePhone').value = user.phone;
-            document.getElementById('profileRole').value = user.role;
-            document.getElementById('profileLocation').value = user.location || '';
+        function getDistance(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
 
-            loadStats();
-            loadListings();
-            loadMyOffers();
-            loadNotifications();
-            updateCartBadge();
+        // Check authentication (wait for Supabase session before redirecting)
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const user = await bootstrapDashboardUser('buyer');
+                if (!user) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.replace('auth.html');
+                    return;
+                }
 
-            // Handle initial section from hash (e.g., #cart)
-            if (window.location.hash === '#cart') {
-                showSection('cart');
+                document.getElementById('userName').textContent = user.name;
+
+                // Pre-fill profile
+                document.getElementById('profileName').value = user.name;
+                document.getElementById('profilePhone').value = user.phone;
+                document.getElementById('profileRole').value = user.role;
+                document.getElementById('profileLocation').value = user.location || '';
+
+                loadStats();
+                loadListings();
+                loadMyOffers();
+                loadNotifications();
+                updateCartBadge();
+
+                // Handle initial section from hash on reload
+                const validSections = ['browse', 'cart', 'offers', 'orders', 'profile'];
+                const initialSection = window.location.hash.replace('#', '');
+                if (validSections.includes(initialSection)) {
+                    showSection(initialSection);
+                } else {
+                    showSection('browse');
+                }
+            } catch (err) {
+                console.error("Buyer dashboard initialization failed:", err);
+                showToast(err.message || 'Connection offline. Retrying in background...', 'error');
+            } finally {
+                document.documentElement.classList.remove('auth-checking');
             }
         });
 
@@ -317,17 +404,36 @@
             });
         });
 
+        // Hashchange listener for back/forward navigation and reload persistence
+        window.addEventListener('hashchange', () => {
+            const validSections = ['browse', 'cart', 'offers', 'orders', 'profile'];
+            const sec = window.location.hash.replace('#', '');
+            if (validSections.includes(sec)) {
+                showSection(sec);
+            }
+        });
+
         function showSection(sectionName) {
+            const validSections = ['browse', 'cart', 'offers', 'orders', 'profile'];
+            if (!validSections.includes(sectionName)) return;
+
             document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('active'));
             document.querySelector(`[data-section="${sectionName}"]`)?.classList.add('active');
 
             document.getElementById('browseSection').style.display = sectionName === 'browse' ? 'block' : 'none';
             document.getElementById('offersSection').style.display = sectionName === 'offers' ? 'block' : 'none';
+            document.getElementById('ordersSection').style.display = sectionName === 'orders' ? 'block' : 'none';
             document.getElementById('cartSection').style.display = sectionName === 'cart' ? 'block' : 'none';
             document.getElementById('profileSection').style.display = sectionName === 'profile' ? 'block' : 'none';
 
             if (sectionName === 'cart') {
                 renderCart();
+            } else if (sectionName === 'orders') {
+                loadMyOrders();
+            }
+
+            if (window.location.hash !== `#${sectionName}`) {
+                window.location.hash = sectionName;
             }
         }
 
@@ -340,10 +446,10 @@
         async function loadStats() {
             try {
                 const stats = await api.get('/stats/buyer');
-                document.getElementById('statTotalOffers').textContent = stats.totalOffers;
-                document.getElementById('statAccepted').textContent = stats.acceptedOffers;
-                document.getElementById('statPending').textContent = stats.pendingOffers;
-                document.getElementById('statRejected').textContent = stats.rejectedOffers;
+                document.getElementById('statTotalOffers').textContent = stats.total_offers;
+                document.getElementById('statAccepted').textContent = stats.accepted_offers;
+                document.getElementById('statPending').textContent = stats.pending_offers;
+                document.getElementById('statRejected').textContent = stats.rejected_offers;
             } catch (error) {
                 console.error('Stats error:', error.message);
             }
@@ -356,9 +462,9 @@
                 const badge = document.getElementById('notifBadge');
                 const list = document.getElementById('notifList');
 
-                if (data.unreadCount > 0) {
+                if (data.unread_count > 0) {
                     badge.style.display = 'flex';
-                    badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
+                    badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
                 } else {
                     badge.style.display = 'none';
                 }
@@ -369,11 +475,11 @@
                 }
 
                 list.innerHTML = data.notifications.slice(0, 20).map(n => `
-                    <div class="notification-item ${n.read ? '' : 'notification-item--unread'}" onclick="markRead('${n._id}', this)">
+                    <div class="notification-item ${n.is_read ? '' : 'notification-item--unread'}" onclick="markRead('${n.id}', this)">
                         <span class="notification-item__icon">${n.type === 'offer_received' ? '💰' : n.type === 'offer_accepted' ? '✅' : '❌'}</span>
                         <div>
                             <p class="notification-item__text">${n.message}</p>
-                            <small class="notification-item__time">${timeAgo(n.createdAt)}</small>
+                            <small class="notification-item__time">${timeAgo(n.created_at)}</small>
                         </div>
                     </div>
                 `).join('');
@@ -431,11 +537,9 @@
             loadListings();
         }
 
-        // ---- IMAGE URL ----
-        function getImageUrl(imagePath) {
-            if (!imagePath) return 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=200&fit=crop';
-            if (imagePath.startsWith('http')) return imagePath;
-            return IMG_BASE + imagePath;
+        function getAvatarUrl(imagePath, name = 'Farmer') {
+            const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff`;
+            return resolveImageUrl(imagePath, fallback);
         }
 
         // ---- LISTINGS ----
@@ -454,12 +558,20 @@
                 const response = await api.get(url);
                 currentListings = response.listings || [];
 
-                // Sort by price
+                // Calculate distances and sort
+                currentListings.forEach(l => {
+                    if (userCoords && l.farmerId?.coordinates) {
+                        l.distance = getDistance(userCoords.lat, userCoords.lng, l.farmerId.coordinates.lat, l.farmerId.coordinates.lng);
+                    }
+                });
+
                 const sortOrder = document.getElementById('priceSort').value;
                 if (sortOrder === 'low') {
                     currentListings.sort((a, b) => a.price - b.price);
                 } else if (sortOrder === 'high') {
                     currentListings.sort((a, b) => b.price - a.price);
+                } else if (sortOrder === 'distance' && userCoords) {
+                    currentListings.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
                 }
 
                 if (currentListings.length === 0) {
@@ -475,27 +587,32 @@
 
                 grid.innerHTML = currentListings.map(listing => `
                     <div class="card">
-                        <img src="${getImageUrl(listing.image)}" 
-                             alt="${listing.cropName}" class="card__image">
+                        <img src="${resolveImageUrl(listing.image)}" 
+                             alt="${listing.crop_name}" class="card__image">
                         <div class="card__content">
-                            <h3 class="card__title">${listing.cropName}</h3>
+                            <h3 class="card__title">${listing.crop_name}</h3>
+                            ${listing.category ? `<span class="badge" style="margin-bottom:0.5rem;display:inline-block;">${listing.category}</span>` : ''}
                             <div class="card__meta">
                                 📍 ${listing.location}
                             </div>
                             <p style="color: var(--gray-600); margin-bottom: 0.5rem;">
                                 ${listing.quantity} ${listing.unit} available
                             </p>
-                            <p style="color: var(--gray-500); font-size: 0.875rem; margin-bottom: 1rem;">
-                                by ${listing.farmerId?.name || 'Farmer'}
-                            </p>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <img src="${getAvatarUrl(listing.farmer?.profile_image, listing.farmer?.name)}" alt="Farmer" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0;">
+                                    by ${listing.farmer?.name || 'Farmer'}
+                                </p>
+                            </div>
+                            ${listing.distance !== undefined ? `<p style="color: var(--primary-600); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;">📏 ${listing.distance.toFixed(1)} km away</p>` : '<div style="margin-bottom:1rem;"></div>'}
                             <div class="card__price">
                                 ₹${listing.price} <span>per ${listing.unit}</span>
                             </div>
                             <div class="card__footer">
-                                <button class="btn btn--primary btn--sm" onclick="openOfferModalById('${listing._id}')">
+                                <button class="btn btn--primary btn--sm" onclick="openOfferModalById('${listing.id}')">
                                     🛒 Buy Now
                                 </button>
-                                <a href="listing.html?id=${listing._id}" class="btn btn--secondary btn--sm">
+                                <a href="listing.html?id=${listing.id}" class="btn btn--secondary btn--sm">
                                     View Details
                                 </a>
                             </div>
@@ -553,16 +670,22 @@
                 noOffersMsg.style.display = 'none';
 
                 tbody.innerHTML = offers.map(offer => {
-                    const farmerPhone = offer.listingId?.farmerId?.phone || '';
+                    const farmer = offer.listing?.farmer || {};
+                    const farmerPhone = farmer.phone || '';
                     return `
                     <tr>
-                        <td><strong>${offer.listingId?.cropName || 'N/A'}</strong></td>
+                        <td><strong>${offer.listing?.crop_name || 'N/A'}</strong></td>
                         <td>
-                            ${offer.listingId?.farmerId?.name || 'Unknown'}<br>
-                            <small style="color: var(--gray-500);">${offer.listingId?.farmerId?.location || ''}</small>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <img src="${getAvatarUrl(farmer.profile_image, farmer.name)}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                                <div>
+                                    ${farmer.name || 'Unknown'}<br>
+                                    <small style="color: var(--gray-500);">${farmer.location || ''}</small>
+                                </div>
+                            </div>
                         </td>
-                        <td>${offer.quantity || 1} ${offer.listingId?.unit || ''}</td>
-                        <td><strong style="color: var(--primary-600);">₹${offer.offerPrice * (offer.quantity || 1)}</strong></td>
+                        <td>${offer.quantity || 1} ${offer.listing?.unit || ''}</td>
+                        <td><strong style="color: var(--primary-600);">₹${offer.offer_price * (offer.quantity || 1)}</strong></td>
                         <td><span class="badge badge--${offer.status}">${offer.status}</span></td>
                         <td>
                             ${offer.status === 'accepted' ? `
@@ -585,11 +708,11 @@
 
         // Open Buy Now modal
         function openOfferModalById(listingId) {
-            const listing = currentListings.find(l => l._id === listingId);
+            const listing = currentListings.find(l => l.id === listingId);
             if (!listing) return;
             currentModalListing = listing;
             
-            document.getElementById('buyListingId').value = listing._id;
+            document.getElementById('buyListingId').value = listing.id;
             document.getElementById('modalUnit').textContent = listing.unit;
             document.getElementById('modalMaxQty').textContent = listing.quantity;
             document.getElementById('buyQuantity').max = listing.quantity;
@@ -597,12 +720,16 @@
             
             document.getElementById('modalListingInfo').innerHTML = `
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <img src="${getImageUrl(listing.image)}" 
+                    <img src="${resolveImageUrl(listing.image)}" 
                          style="width: 60px; height: 60px; border-radius: 0.5rem; object-fit: cover;">
-                    <div>
-                        <strong>${listing.cropName}</strong><br>
+                    <div style="flex: 1;">
+                        <strong>${listing.crop_name}</strong><br>
                         <span style="color: var(--gray-500);">₹${listing.price} per ${listing.unit}</span><br>
                         <span style="color: var(--gray-500);">📍 ${listing.location}</span>
+                    </div>
+                    <div style="text-align: right; border-left: 1px solid var(--gray-200); padding-left: 1rem;">
+                        <img src="${getAvatarUrl(listing.farmer?.profile_image, listing.farmer?.name)}" alt="Farmer" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-bottom: 0.25rem;"><br>
+                        <small style="color: var(--gray-500);">${listing.farmer?.name || 'Farmer'}</small>
                     </div>
                 </div>
             `;
@@ -625,7 +752,7 @@
             const message = document.getElementById('buyMessage').value;
 
             // Check if item already in cart
-            const existingItem = cart.find(item => item.listingId === currentModalListing._id);
+            const existingItem = cart.find(item => item.listing_id === currentModalListing.id);
             if (existingItem) {
                 existingItem.quantity += quantity;
                 if (existingItem.quantity > currentModalListing.quantity) {
@@ -633,14 +760,15 @@
                 }
             } else {
                 cart.push({
-                    listingId: currentModalListing._id,
-                    cropName: currentModalListing.cropName,
+                    listing_id: currentModalListing.id,
+                    crop_name: currentModalListing.crop_name,
                     price: currentModalListing.price,
                     quantity: quantity,
                     unit: currentModalListing.unit,
                     image: currentModalListing.image,
-                    farmerId: currentModalListing.farmerId?._id || currentModalListing.farmerId,
-                    farmerName: currentModalListing.farmerId?.name || 'Farmer',
+                    farmer_id: currentModalListing.farmer_id || currentModalListing.farmer?.id,
+                    farmer_name: currentModalListing.farmer?.name || 'Farmer',
+                    farmer_image: currentModalListing.farmer?.profile_image || '',
                     message: message
                 });
             }
@@ -675,10 +803,13 @@
                     <tr>
                         <td>
                             <div style="display: flex; align-items: center; gap: 1rem;">
-                                <img src="${getImageUrl(item.image)}" style="width: 40px; height: 40px; border-radius: 0.25rem; object-fit: cover;">
+                                <img src="${resolveImageUrl(item.image)}" style="width: 40px; height: 40px; border-radius: 0.25rem; object-fit: cover;">
                                 <div>
-                                    <strong>${item.cropName}</strong><br>
-                                    <small style="color: var(--gray-500);">by ${item.farmerName}</small>
+                                    <strong>${item.crop_name}</strong><br>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem;">
+                                        <img src="${getAvatarUrl(item.farmer_image, item.farmer_name)}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
+                                        <small style="color: var(--gray-500);">by ${item.farmer_name}</small>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -709,51 +840,43 @@
             }
         }
 
-        async function placeOrder() {
+        function placeOrder() {
             if (cart.length === 0) return;
-            
-            const btn = document.querySelector('#cartFooter .btn--primary');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'Processing...';
+            window.location.href = 'checkout.html';
+        }
 
-            let successCount = 0;
-            let failureCount = 0;
-            const remainingCart = [];
+        async function loadMyOrders() {
+            try {
+                const response = await api.get('/orders/buyer');
+                const orders = response.orders || [];
+                const tbody = document.getElementById('ordersTableBody');
+                const noOrdersMsg = document.getElementById('noOrdersMessage');
+                const table = document.getElementById('ordersTable');
 
-            for (const item of cart) {
-                try {
-                    await api.post('/offers', {
-                        listingId: item.listingId,
-                        offerPrice: item.price,
-                        quantity: item.quantity,
-                        message: item.message || 'Cart purchase'
-                    });
-                    successCount++;
-                } catch (error) {
-                    console.error('Failed to order item:', item.cropName, error.message);
-                    failureCount++;
-                    remainingCart.push(item);
+                if (orders.length === 0) {
+                    table.style.display = 'none';
+                    noOrdersMsg.style.display = 'block';
+                    return;
                 }
-            }
-            
-            if (successCount > 0) {
-                showToast(`${successCount} orders placed successfully!`, 'success');
-                cart = remainingCart;
-                saveCart();
-                renderCart();
-                loadStats();
-                loadMyOffers();
-            }
 
-            if (failureCount > 0) {
-                showToast(`${failureCount} items failed. Some listings may no longer be available.`, 'error');
-            } else if (successCount > 0) {
-                showSection('offers');
-            }
+                table.style.display = 'table';
+                noOrdersMsg.style.display = 'none';
 
-            btn.disabled = false;
-            btn.textContent = originalText;
+                tbody.innerHTML = orders.map(order => `
+                    <tr>
+                        <td><small>#${order.id.substring(order.id.length - 8)}</small></td>
+                        <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                        <td>
+                            ${order.items.map(item => `${item.crop_name} (${item.quantity}${item.unit})`).join(', ')}
+                        </td>
+                        <td><strong>₹${order.total_amount}</strong></td>
+                        <td><span class="badge badge--${order.payment_status === 'completed' ? 'accepted' : 'pending'}">${order.payment_status === 'completed' ? 'Paid' : 'Pending'}</span></td>
+                        <td>${order.payment_method || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
         }
 
         // Debounced search on typing
@@ -782,6 +905,22 @@
                 showToast(error.message, 'error');
             }
         });
+
+        // Expose functions to window
+        window.toggleNotifications = toggleNotifications;
+        window.markAllRead = markAllRead;
+        window.toggleSidebar = toggleSidebar;
+        window.filterByCategory = filterByCategory;
+        window.detectUserLocation = detectUserLocation;
+        window.loadListings = loadListings;
+        window.showSection = showSection;
+        window.markRead = markRead;
+        window.openOfferModalById = openOfferModalById;
+        window.closeOfferModal = closeOfferModal;
+        window.clearCartUI = clearCartUI;
+        window.removeFromCart = removeFromCart;
+        window.placeOrder = placeOrder;
+        window.updateModalTotal = updateModalTotal;
     </script>
 </body>
 

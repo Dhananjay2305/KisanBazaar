@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['farmer', 'buyer'],
+        enum: ['farmer', 'buyer', 'admin'],
         required: [true, 'Role is required']
     },
     password: {
@@ -26,6 +26,14 @@ const userSchema = new mongoose.Schema({
     location: {
         type: String,
         trim: true
+    },
+    coordinates: {
+        lat: { type: Number },
+        lng: { type: Number }
+    },
+    profileImage: {
+        type: String,
+        default: ''
     },
     createdAt: {
         type: Date,
