@@ -92,6 +92,9 @@ export async function bootstrapDashboardUser(requiredRole) {
 
         if (!profile || profile.role !== requiredRole) return null;
 
+        // Inject contact email from auth metadata
+        profile.email = session.user.user_metadata?.contact_email || '';
+
         saveSession(session.access_token, profile);
         return profile;
     } catch (err) {
@@ -217,6 +220,10 @@ function initAuthPage() {
                     showToast('Access denied. Admins must log in through the admin panel.', 'error');
                     return;
                 }
+                
+                // Inject contact email from auth metadata
+                profile.email = session.user.user_metadata?.contact_email || '';
+                
                 saveSession(session.access_token, profile);
                 if (isAuthPage()) {
                     redirectToDashboard(profile);

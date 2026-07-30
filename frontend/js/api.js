@@ -1,10 +1,198 @@
-import { supabase } from './supabase-client.js';
+import { supabase, isSupabaseConfigured } from './supabase-client.js';
+import { compressImageFile, sanitizeFileName } from './image-utils.js';
+
+export { resolveImageUrl } from './image-utils.js';
 
 // Helper to get current session user ID
 const getUserId = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.user?.id;
 };
+
+// Helper to convert a File/Blob to a Base64-encoded Data URL
+const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+    });
+};
+
+const MAX_BASE64_IMAGE_BYTES = 750_000;
+
+function getUploadApiUrl() {
+    const fromEnv = String(import.meta.env?.VITE_UPLOAD_API_URL ?? '').trim();
+    if (fromEnv) return fromEnv;
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        return `${window.location.origin}/api/upload-image`;
+    }
+    return '/api/upload-image';
+}
+
+async function uploadViaServerApi(file, accessToken, bucket) {
+    try {
+        const base64 = await fileToBase64(file);
+        const res = await fetch(getUploadApiUrl(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+                base64,
+                fileName: file.name,
+                bucket,
+                contentType: file.type || 'image/jpeg',
+            }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.url) return data.url;
+        console.warn('Vercel upload API error:', data.error || res.status);
+        return null;
+    } catch (err) {
+        console.warn('Vercel upload API unreachable:', err);
+        return null;
+    }
+}
+
+/**
+ * Upload listing or profile images — works on localhost and Vercel.
+ * Tries Supabase client upload, then /api/upload-image on Vercel, then small base64 fallback.
+ */
+async function uploadImageFile(imageFile, userId, bucket = 'produce') {
+    if (!isSupabaseConfigured) {
+        throw new Error(
+            'Image upload is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel Environment Variables, then redeploy.'
+        );
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        throw new Error('Your session expired. Please log out and sign in again, then retry the upload.');
+    }
+
+    const prepared = await compressImageFile(imageFile);
+    const storagePath =
+        bucket === 'avatars'
+            ? `${userId}/profile-${Date.now()}.jpg`
+            : `${userId}/${Date.now()}-${sanitizeFileName(prepared.name)}`;
+
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(storagePath, prepared, {
+        upsert: true,
+        contentType: prepared.type || 'image/jpeg',
+        cacheControl: '3600',
+    });
+
+    if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+        return publicUrlData.publicUrl;
+    }
+
+    console.warn(`Direct ${bucket} upload failed, trying Vercel API:`, uploadError.message);
+
+    const serverUrl = await uploadViaServerApi(prepared, session.access_token, bucket);
+    if (serverUrl) return serverUrl;
+
+    let fallbackFile = prepared;
+    if (fallbackFile.size > MAX_BASE64_IMAGE_BYTES) {
+        try {
+            console.warn(`[FarmDirect] Image size (${fallbackFile.size} bytes) exceeds base64 limit. Compressing aggressively...`);
+            // Attempt aggressive compression: max width 500px, quality 0.6
+            const aggressivelyCompressed = await compressImageFile(imageFile, 500, 0.6);
+            if (aggressivelyCompressed.size <= MAX_BASE64_IMAGE_BYTES || aggressivelyCompressed.size < fallbackFile.size) {
+                fallbackFile = aggressivelyCompressed;
+                console.log(`[FarmDirect] Aggressive compression succeeded: ${fallbackFile.size} bytes`);
+            }
+        } catch (compressErr) {
+            console.warn('[FarmDirect] Aggressive compression failed:', compressErr);
+        }
+    }
+
+    try {
+        return await fileToBase64(fallbackFile);
+    } catch (base64Err) {
+        throw new Error(`Image encoding failed: ${base64Err.message}. Original upload error: ${uploadError.message}`);
+    }
+}
+
+const LISTING_CATEGORIES = ['vegetables', 'fruits', 'grains', 'spices', 'pulses', 'other'];
+
+async function getSessionUserId() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+}
+
+async function getCurrentProfile() {
+    const userId = await getSessionUserId();
+    if (!userId) return null;
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (error) throw error;
+    return data;
+}
+
+async function assertAdmin() {
+    const profile = await getCurrentProfile();
+    if (!profile || profile.role !== 'admin') {
+        throw new Error('Only administrators can perform this action.');
+    }
+    return profile;
+}
+
+function parseListingFormData(formData, { requireImage = false } = {}) {
+    const cropName = String(formData.get('cropName') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+    const location = String(formData.get('location') ?? '').trim();
+    const unit = String(formData.get('unit') ?? 'kg').trim() || 'kg';
+    const category = String(formData.get('category') ?? 'vegetables').trim().toLowerCase();
+    const quantity = Number(formData.get('quantity'));
+    const price = Number(formData.get('price'));
+    const imageFile = formData.get('image');
+
+    const errors = [];
+    if (!cropName) errors.push('Product name is required.');
+    if (!location) errors.push('Location is required.');
+    if (!Number.isFinite(quantity) || quantity <= 0) errors.push('Stock quantity must be greater than 0.');
+    if (!Number.isFinite(price) || price <= 0) errors.push('Price must be greater than 0.');
+    if (!LISTING_CATEGORIES.includes(category)) errors.push('Please select a valid category.');
+    if (requireImage && (!imageFile || !imageFile.size)) {
+        errors.push('Product image is required.');
+    }
+
+    if (errors.length) {
+        const err = new Error(errors.join(' '));
+        err.validationErrors = errors;
+        throw err;
+    }
+
+    return {
+        cropName,
+        description,
+        location,
+        unit,
+        category,
+        quantity,
+        price,
+        imageFile: imageFile && imageFile.size > 0 ? imageFile : null,
+    };
+}
+
+function listingRowFromParsed(parsed, farmerId, imageUrl) {
+    return {
+        farmer_id: farmerId,
+        crop_name: parsed.cropName,
+        quantity: parsed.quantity,
+        unit: parsed.unit,
+        price: parsed.price,
+        location: parsed.location,
+        description: parsed.description || null,
+        category: parsed.category,
+        image: imageUrl || null,
+        status: 'available',
+    };
+}
+
 
 const api = {
     // Standard request mapper
@@ -31,7 +219,10 @@ const api = {
         if (endpoint === '/offers/sent') return this.getSentOffers();
         if (endpoint === '/orders/farmer') return this.getFarmerOrders();
         if (endpoint === '/orders/buyer') return this.getBuyerOrders();
-        if (endpoint === '/listings' || endpoint.startsWith('/listings?')) return this.getAllListings();
+        if (endpoint === '/listings' || endpoint.startsWith('/listings?')) {
+            const query = endpoint.includes('?') ? endpoint.slice(endpoint.indexOf('?')) : '';
+            return this.getAllListings(query);
+        }
         if (endpoint === '/farmers/all') return this.getAllFarmers();
         if (endpoint === '/admin/stats') return this.getAdminDashboardStats();
         if (endpoint === '/admin/orders') return this.getAdminOrders();
@@ -104,6 +295,14 @@ const api = {
 
     async putForm(endpoint, formData) {
         if (endpoint === '/auth/profile') return this.updateProfileFromForm(formData);
+        if (endpoint.startsWith('/admin/listings/')) {
+            const id = endpoint.split('/')[3];
+            return this.updateListingAsAdmin(id, formData);
+        }
+        if (endpoint.startsWith('/listings/')) {
+            const id = endpoint.split('/')[2];
+            return this.updateListingFromForm(id, formData);
+        }
         throw new Error(`putForm ${endpoint} not mapped.`);
     },
 
@@ -167,8 +366,32 @@ const api = {
         return { listings: data };
     },
 
-    async getAllListings() {
-        const { data, error } = await supabase.from('listings').select('*, farmer:profiles!listings_farmer_id_fkey(id, name, location, profile_image)').eq('status', 'available').order('created_at', { ascending: false });
+    async getAllListings(queryString = '') {
+        const params = new URLSearchParams(
+            queryString.startsWith('?') ? queryString.slice(1) : queryString
+        );
+        const status = params.get('status') || 'available';
+        const crop = params.get('crop')?.trim();
+        const location = params.get('location')?.trim();
+
+        let query = supabase
+            .from('listings')
+            .select('*, farmer:profiles!listings_farmer_id_fkey(id, name, location, profile_image)')
+            .eq('status', status)
+            .order('created_at', { ascending: false });
+
+        if (crop) {
+            if (LISTING_CATEGORIES.includes(crop.toLowerCase())) {
+                query = query.eq('category', crop.toLowerCase());
+            } else {
+                query = query.ilike('crop_name', `%${crop}%`);
+            }
+        }
+        if (location) {
+            query = query.ilike('location', `%${location}%`);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         return { listings: data };
     },
@@ -186,72 +409,193 @@ const api = {
     },
 
     async createListingAsAdmin(formData) {
-        const farmerId = formData.get('farmerId');
-        if (!farmerId) throw new Error('Farmer ID is required');
-        
-        const imageData = formData.get('image');
-        let imageUrl = null;
+        await assertAdmin();
 
-        if (imageData && imageData.size > 0) {
-            const fileName = `${Date.now()}-${imageData.name}`;
-            const { data, error } = await supabase.storage.from('produce').upload(fileName, imageData);
-            if (error) throw error;
-            const { data: publicUrlData } = supabase.storage.from('produce').getPublicUrl(fileName);
-            imageUrl = publicUrlData.publicUrl;
+        const farmerId = String(formData.get('farmerId') ?? '').trim();
+        if (!farmerId) throw new Error('Please select a farmer for this product.');
+
+        const parsed = parseListingFormData(formData, { requireImage: false });
+        let imageUrl = null;
+        if (parsed.imageFile) {
+            imageUrl = await uploadImageFile(parsed.imageFile, farmerId, 'produce');
         }
 
-        const { data, error } = await supabase.from('listings').insert({
-            farmer_id: farmerId,
-            crop_name: formData.get('cropName'),
-            quantity: Number(formData.get('quantity')),
-            unit: formData.get('unit'),
-            price: Number(formData.get('price')),
-            location: formData.get('location'),
-            description: formData.get('description'),
-            image: imageUrl,
-            status: 'available'
-        }).select().single();
+        const { data, error } = await supabase
+            .from('listings')
+            .insert(listingRowFromParsed(parsed, farmerId, imageUrl))
+            .select()
+            .single();
 
         if (error) throw error;
-        return data;
+        return { message: 'Product created successfully', listing: data };
     },
 
     async createListingFromForm(formData) {
         const userId = await getUserId();
-        const imageData = formData.get('image');
-        let imageUrl = null;
+        if (!userId) throw new Error('Not authenticated. Please sign in again.');
 
-        if (imageData && imageData.size > 0) {
-            const fileName = `${Date.now()}-${imageData.name}`;
-            const { data, error } = await supabase.storage.from('produce').upload(fileName, imageData);
-            if (error) throw error;
-            const { data: publicUrlData } = supabase.storage.from('produce').getPublicUrl(fileName);
-            imageUrl = publicUrlData.publicUrl;
+        const profile = await getCurrentProfile();
+        if (!profile || profile.role !== 'farmer') {
+            throw new Error('Only farmers can add product listings.');
         }
 
-        const { data, error } = await supabase.from('listings').insert({
-            farmer_id: userId,
-            crop_name: formData.get('cropName'),
-            quantity: Number(formData.get('quantity')),
-            unit: formData.get('unit'),
-            price: Number(formData.get('price')),
-            location: formData.get('location'),
-            description: formData.get('description'),
-            image: imageUrl,
-            status: 'available'
-        }).select().single();
+        const parsed = parseListingFormData(formData, { requireImage: false });
+        let imageUrl = null;
+        if (parsed.imageFile) {
+            imageUrl = await uploadImageFile(parsed.imageFile, userId, 'produce');
+        }
+
+        const { data, error } = await supabase
+            .from('listings')
+            .insert(listingRowFromParsed(parsed, userId, imageUrl))
+            .select()
+            .single();
 
         if (error) throw error;
-        return data;
+        return { message: 'Listing created successfully', listing: data };
+    },
+
+    async updateListingFromForm(id, formData) {
+        const userId = await getUserId();
+        if (!userId) throw new Error('Not authenticated');
+
+        const { data: existing, error: fetchError } = await supabase
+            .from('listings')
+            .select('farmer_id, image')
+            .eq('id', id)
+            .single();
+        if (fetchError || !existing) throw new Error('Listing not found');
+        if (existing.farmer_id !== userId) {
+            throw new Error('You can only update your own listings.');
+        }
+
+        const parsed = parseListingFormData(formData, { requireImage: false });
+        let imageUrl = existing.image;
+        if (parsed.imageFile) {
+            imageUrl = await uploadImageFile(parsed.imageFile, userId, 'produce');
+        }
+
+        const { data, error } = await supabase
+            .from('listings')
+            .update({
+                crop_name: parsed.cropName,
+                quantity: parsed.quantity,
+                unit: parsed.unit,
+                price: parsed.price,
+                location: parsed.location,
+                description: parsed.description || null,
+                category: parsed.category,
+                image: imageUrl,
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { message: 'Listing updated successfully', listing: data };
+    },
+
+    // --- Admin Endpoints ---
+
+    async createFarmerAsAdmin(data) {
+        await assertAdmin();
+        const apiUrl = window.location.hostname.includes('localhost')
+            ? 'http://localhost:5001/api/auth/admin-add-farmer'
+            : '/_/backend/api/auth/admin-add-farmer';
+            
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create farmer');
+        }
+        
+        return await response.json();
+    },
+
+    async updateListingAsAdmin(id, formData) {
+        await assertAdmin();
+
+        const farmerId = String(formData.get('farmerId') ?? '').trim();
+        if (!farmerId) throw new Error('Please select a farmer for this product.');
+
+        const { data: existing, error: fetchError } = await supabase
+            .from('listings')
+            .select('image')
+            .eq('id', id)
+            .single();
+        if (fetchError || !existing) throw new Error('Product not found');
+
+        const parsed = parseListingFormData(formData, { requireImage: false });
+        let imageUrl = existing.image;
+        if (parsed.imageFile) {
+            imageUrl = await uploadImageFile(parsed.imageFile, farmerId, 'produce');
+        }
+
+        const { data, error } = await supabase
+            .from('listings')
+            .update({
+                farmer_id: farmerId,
+                crop_name: parsed.cropName,
+                quantity: parsed.quantity,
+                unit: parsed.unit,
+                price: parsed.price,
+                location: parsed.location,
+                description: parsed.description || null,
+                category: parsed.category,
+                image: imageUrl,
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { message: 'Product updated successfully', listing: data };
     },
 
     async updateListing(id, updateData) {
+        const userId = await getUserId();
+        if (!userId) throw new Error('Not authenticated');
+
+        const profile = await getCurrentProfile();
+        if (profile?.role !== 'admin') {
+            const { data: existing } = await supabase
+                .from('listings')
+                .select('farmer_id')
+                .eq('id', id)
+                .single();
+            if (!existing || existing.farmer_id !== userId) {
+                throw new Error('You can only update your own listings.');
+            }
+        }
+
         const { data, error } = await supabase.from('listings').update(updateData).eq('id', id).select().single();
         if (error) throw error;
         return data;
     },
 
     async deleteListing(id) {
+        const profile = await getCurrentProfile();
+        if (profile?.role !== 'admin') {
+            const userId = await getUserId();
+            const { data: existing } = await supabase
+                .from('listings')
+                .select('farmer_id')
+                .eq('id', id)
+                .single();
+            if (!existing || existing.farmer_id !== userId) {
+                throw new Error('You can only delete your own listings.');
+            }
+        }
+
         const { error } = await supabase.from('listings').delete().eq('id', id);
         if (error) throw error;
         return { success: true };
@@ -317,33 +661,73 @@ const api = {
     },
 
     async updateProfileFromForm(formData) {
-        const userId = await getUserId();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) throw new Error('Session missing. Please log in again.');
+
+        const userId = session.user.id;
         const name = formData.get('name');
         const location = formData.get('location');
+        const phone = formData.get('phone');
+        const email = formData.get('email');
         const profileImage = formData.get('profileImage');
         let imageUrl = null;
 
         if (profileImage && profileImage.size > 0) {
-            const fileName = `profile-${userId}-${Date.now()}`;
-            const { data, error } = await supabase.storage.from('avatars').upload(fileName, profileImage, { upsert: true });
-            if (error) throw error;
-            const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-            imageUrl = publicUrlData.publicUrl;
+            imageUrl = await uploadImageFile(profileImage, userId, 'avatars');
         }
 
         const updates = { name, location };
+        if (phone) updates.phone = phone;
         if (imageUrl) updates.profile_image = imageUrl;
 
+        // 1. Update public profile
         const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
         if (error) throw error;
-        return { user: data };
+
+        // 2. Update auth user metadata for email, and update primary email if phone changed
+        const authUpdates = { data: { contact_email: email, phone } };
+        
+        // If phone changed, we must update their login email so they can still log in
+        if (phone && phone !== session.user.user_metadata?.phone && phone !== session.user.phone) {
+            authUpdates.email = `${phone}@farmdirect.com`;
+        }
+
+        const { error: authError } = await supabase.auth.updateUser(authUpdates);
+        if (authError) console.warn('Could not update auth user metadata:', authError);
+
+        // 3. Merge contact_email into the returned profile so the UI can display it
+        const finalProfile = { ...data, email: email || session.user.user_metadata?.contact_email || '' };
+        return { user: finalProfile };
     },
 
     async updateProfile(updates) {
-        const userId = await getUserId();
-        const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) throw new Error('Session missing. Please log in again.');
+
+        const userId = session.user.id;
+        const profileUpdates = { ...updates };
+        
+        // Extract email to store in user_metadata
+        let contactEmail = profileUpdates.email;
+        delete profileUpdates.email; // Do not send email to profiles table since column doesn't exist
+
+        const { data, error } = await supabase.from('profiles').update(profileUpdates).eq('id', userId).select().single();
         if (error) throw error;
-        return { user: data };
+
+        // Update auth user metadata
+        const authUpdates = { data: {} };
+        if (contactEmail !== undefined) authUpdates.data.contact_email = contactEmail;
+        if (profileUpdates.phone) authUpdates.data.phone = profileUpdates.phone;
+
+        if (profileUpdates.phone && profileUpdates.phone !== session.user.user_metadata?.phone && profileUpdates.phone !== session.user.phone) {
+            authUpdates.email = `${profileUpdates.phone}@farmdirect.com`;
+        }
+
+        const { error: authError } = await supabase.auth.updateUser(authUpdates);
+        if (authError) console.warn('Could not update auth user metadata:', authError);
+
+        const finalProfile = { ...data, email: contactEmail !== undefined ? contactEmail : session.user.user_metadata?.contact_email || '' };
+        return { user: finalProfile };
     },
 
     async createOrder(orderData) {

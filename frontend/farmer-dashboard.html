@@ -276,9 +276,12 @@
                             <input type="text" class="form-input" id="profileName" required>
                         </div>
                         <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-input" id="profileEmail" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-input" id="profilePhone" disabled
-                                style="background:var(--gray-100);cursor:not-allowed;">
+                            <input type="tel" class="form-input" id="profilePhone" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Role</label>
@@ -322,7 +325,8 @@
 
                 // Pre-fill profile
                 document.getElementById('profileName').value = user.name;
-                document.getElementById('profilePhone').value = user.phone;
+                document.getElementById('profileEmail').value = user.email || '';
+                document.getElementById('profilePhone').value = user.phone || '';
                 document.getElementById('profileRole').value = user.role;
                 document.getElementById('profileLocation').value = user.location || '';
                 if (user.profile_image) {
@@ -815,17 +819,29 @@
             
             const formData = new FormData();
             formData.append('name', document.getElementById('profileName').value);
+            formData.append('email', document.getElementById('profileEmail').value);
+            formData.append('phone', document.getElementById('profilePhone').value);
             formData.append('location', document.getElementById('profileLocation').value);
             
-            const imageFile = document.getElementById('profileImageInput').files[0];
+            const imageFile = document.getElementById('profileImageInput')?.files[0];
             if (imageFile) {
                 formData.append('profileImage', imageFile);
             }
 
             try {
                 const response = await api.putForm('/auth/profile', formData);
-                saveSession(getToken(), response.user);
+                
+                import('./js/auth.js').then(({ saveSession, getToken }) => {
+                    saveSession(getToken(), response.user);
+                });
+                
                 document.getElementById('userName').textContent = response.user.name;
+                
+                if (response.user.profile_image) {
+                    const { resolveImageUrl } = await import('./js/image-utils.js');
+                    document.getElementById('profileImagePreview').src = resolveImageUrl(response.user.profile_image);
+                }
+                
                 showToast('Profile updated!', 'success');
             } catch (error) {
                 showToast(error.message, 'error');
