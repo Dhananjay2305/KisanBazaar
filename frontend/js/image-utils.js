@@ -14,8 +14,7 @@ export function getLegacyApiBase() {
   return 'http://127.0.0.1:5001';
 }
 
-const DEFAULT_LISTING_IMAGE =
-  'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=200&fit=crop';
+const DEFAULT_LISTING_IMAGE = '/img/logo.jpg';
 
 /**
  * Resolve listing/profile image paths for <img src>.
