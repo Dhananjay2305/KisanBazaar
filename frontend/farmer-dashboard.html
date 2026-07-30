@@ -63,6 +63,7 @@
         <button class="dashboard-hamburger" id="dashboardHamburger" onclick="toggleSidebar()">☰</button>
 
         <!-- Main Content -->
+        <div id="mobileOverlay" class="mobile-overlay" onclick="closeSidebar()" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999;"></div>
         <main class="main-content">
             <!-- Stats Section (always visible at top) -->
             <section id="statsSection">
@@ -362,7 +363,7 @@
         document.querySelectorAll('.sidebar__link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const section = e.target.dataset.section;
+                const section = e.currentTarget.dataset.section;
                 showSection(section);
             });
         });
@@ -376,6 +377,12 @@
             }
         });
 
+        
+        function closeSidebar() {
+            closeSidebar();
+            const overlay = document.getElementById('mobileOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
         function showSection(sectionName) {
             document.getElementById('sidebar')?.classList.remove('open');
             const validSections = ['listings', 'offers', 'received_orders', 'add', 'profile'];
@@ -401,7 +408,12 @@
 
         // Mobile sidebar toggle
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('open');
+            if (overlay) {
+                overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+            }
         }
 
         // ---- STATS ----

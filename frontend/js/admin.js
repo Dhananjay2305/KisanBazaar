@@ -107,8 +107,8 @@ function setSaveButtonLoading(isLoading, label = 'Save Product') {
 }
 
 async function switchView(viewId) {
-    document.getElementById('adminSidebar')?.classList.remove('open');
-    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('adminSidebar')?.classList.remove('mobile-open');
+    document.getElementById('adminOverlay')?.classList.remove('active');
     const validViews = ['dashboard', 'orders', 'products', 'customers', 'payments', 'support', 'analytics'];
     if (!validViews.includes(viewId)) return;
 
