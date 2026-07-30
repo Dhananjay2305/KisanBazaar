@@ -1,16 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-checking">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Browse fresh produce from farmers across India">
-    <title>Browse Produce - FarmDirect</title>
+    <title>Browse Produce - FarmDirect</title>
+    <style>
+        html.auth-checking body {
+            visibility: hidden;
+        }
+    </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script type="module" crossorigin src="/assets/buyer-DzJ4ExCM.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/auth-BVt79YaJ.js">
-  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+  <script type="module" crossorigin src="/assets/buyer-JLlSBB96.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/api-7nHHIqDr.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-oH8Wn8sz.js">
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-ckwbz45p.js">
+  <link rel="stylesheet" crossorigin href="/assets/api-D0VKcXqG.css">
 </head>
 
 <body>
@@ -244,14 +251,26 @@
                 </div>
                 <div class="card" style="max-width: 600px; padding: 2rem;">
                     <form id="profileForm">
+                        <div class="form-group" style="text-align: center; margin-bottom: 2rem;">
+                            <img id="profileImagePreview" src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&h=200&fit=crop" alt="Profile Image" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 3px solid var(--primary-100);">
+                            <div>
+                                <label class="btn btn--sm btn--secondary" style="cursor: pointer;">
+                                    Change Photo
+                                    <input type="file" id="profileImageInput" accept="image/*" style="display: none;" onchange="previewProfileImage(event)">
+                                </label>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Full Name</label>
                             <input type="text" class="form-input" id="profileName" required>
                         </div>
                         <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-input" id="profileEmail" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-input" id="profilePhone" disabled
-                                style="background:var(--gray-100);cursor:not-allowed;">
+                            <input type="tel" class="form-input" id="profilePhone" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Role</label>

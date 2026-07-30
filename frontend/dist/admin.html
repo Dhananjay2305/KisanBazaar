@@ -3,54 +3,616 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Delivery Planning - FarmDirect</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <title>Admin Dashboard - FarmDirect</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body, html { height: 100%; margin: 0; overflow: hidden; }
-        .admin-layout { display: grid; grid-template-columns: 350px 1fr; height: 100vh; }
-        .sidebar { background: white; border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; overflow-y: auto; }
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--gray-100); }
-        .order-list { flex: 1; }
-        .order-card { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.2s; }
-        .order-card:hover { background: var(--primary-50); }
-        .order-card.active { border-left: 4px solid var(--primary-500); background: var(--primary-50); }
-        #adminMap { height: 100%; width: 100%; }
-        .badge { padding: 0.25rem 0.5rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
-        .badge--pending { background: #fef3c7; color: #92400e; }
-        .badge--completed { background: #d1fae5; color: #065f46; }
+        :root {
+            --admin-bg: #f3f4f6;
+            --admin-card: #ffffff;
+            --admin-border: #e5e7eb;
+            --admin-text: #374151;
+            --admin-text-muted: #6b7280;
+        }
+
+        body {
+            background-color: var(--admin-bg);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .admin-layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .admin-sidebar {
+            width: 280px;
+            background: #111827;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .admin-sidebar__header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .admin-sidebar__header h2 {
+            color: #fff;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .admin-sidebar__nav {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+            list-style: none;
+            margin: 0;
+        }
+
+        .admin-nav__item {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .admin-nav__item:hover, .admin-nav__item.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-left: 4px solid var(--primary-500);
+        }
+
+        .admin-nav__item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .admin-sidebar__footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #1f2937;
+        }
+
+        .admin-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .admin-header {
+            height: 70px;
+            background: #fff;
+            border-bottom: 1px solid var(--admin-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .admin-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--admin-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid var(--admin-border);
+        }
+
+        .stat-card__icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-card__icon--blue { background: #e0f2fe; color: #0284c7; }
+        .stat-card__icon--green { background: #dcfce7; color: #16a34a; }
+        .stat-card__icon--orange { background: #ffedd5; color: #ea580c; }
+        .stat-card__icon--purple { background: #f3e8ff; color: #9333ea; }
+
+        .stat-card__info h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.875rem;
+            color: var(--admin-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card__info p {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--admin-text);
+        }
+
+        /* Tables */
+        .admin-table-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--admin-border);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .admin-table-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--admin-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+        }
+
+        .admin-table-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .admin-table th, .admin-table td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--admin-border);
+        }
+
+        .admin-table th {
+            font-weight: 600;
+            color: var(--admin-text-muted);
+            font-size: 0.875rem;
+            background: #f9fafb;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .admin-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .admin-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.completed { background: #d1fae5; color: #065f46; }
+        .status-badge.shipped { background: #e0f2fe; color: #0369a1; }
+        .status-badge.cancelled { background: #fee2e2; color: #b91c1c; }
+
+        /* Action Buttons */
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--admin-text-muted);
+            padding: 0.25rem;
+            transition: color 0.2s;
+            font-size: 1.1rem;
+            margin-right: 0.5rem;
+        }
+        .action-btn:hover { color: var(--primary-600); }
+        .action-btn.delete:hover { color: var(--error); }
+
+        /* Charts Container */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--admin-border);
+        }
     </style>
-  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+  <script type="module" crossorigin src="/assets/admin-C4nWz8xU.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/api-7nHHIqDr.js">
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-ckwbz45p.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-oH8Wn8sz.js">
+  <link rel="modulepreload" crossorigin href="/assets/push-notifications-CQmv0i8S.js">
+  <link rel="stylesheet" crossorigin href="/assets/api-D0VKcXqG.css">
 </head>
 <body>
+
     <div class="admin-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <h2 style="color: var(--primary-700); margin: 0;">Delivery Radar</h2>
-                    <a href="index.html" style="font-size: 0.8rem; color: var(--gray-500);">Logout</a>
-                </div>
-                <p style="color: var(--gray-500); font-size: 0.9rem; margin: 0;">Planning routes for active orders</p>
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar__header">
+                <i class="fa-solid fa-leaf" style="color: var(--primary-500); font-size: 1.5rem;"></i>
+                <h2>FarmDirect Admin</h2>
             </div>
-            <div class="order-list" id="orderList">
-                <div style="padding: 2rem; text-align: center; color: var(--gray-400);">
-                    <p>Loading orders...</p>
-                </div>
+            <ul class="admin-sidebar__nav">
+                <li class="admin-nav__item active" onclick="switchView('dashboard')">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </li>
+                <li class="admin-nav__item" onclick="switchView('orders')">
+                    <i class="fa-solid fa-cart-shopping"></i> Orders
+                </li>
+                <li class="admin-nav__item" onclick="switchView('products')">
+                    <i class="fa-solid fa-box-open"></i> Products
+                </li>
+                <li class="admin-nav__item" onclick="switchView('customers')">
+                    <i class="fa-solid fa-users"></i> Customers
+                </li>
+                <li class="admin-nav__item" onclick="switchView('payments')">
+                    <i class="fa-solid fa-credit-card"></i> Payments
+                </li>
+                <li class="admin-nav__item" onclick="switchView('support')">
+                    <i class="fa-solid fa-headset"></i> Support Messages
+                </li>
+                <li class="admin-nav__item" onclick="switchView('analytics')">
+                    <i class="fa-solid fa-chart-line"></i> Analytics
+                </li>
+            </ul>
+            <div class="admin-sidebar__footer">
+                <a href="admin-login.html" onclick="doLogout(event)" style="color:#9ca3af;display:flex;align-items:center;gap:0.5rem;text-decoration:none;font-size:0.9rem;">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                </a>
             </div>
         </aside>
-        <main style="position: relative;">
-            <div id="adminMap"></div>
-            <div id="mapControls" style="position: absolute; top: 1rem; right: 1rem; z-index: 1000; background: white; padding: 0.75rem; border-radius: 8px; box-shadow: var(--shadow-lg);">
-                <button class="btn btn--primary btn--sm" onclick="fetchAllOrders()">🔄 Refresh Data</button>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Mobile overlay for sidebar -->
+            <div class="admin-mobile-overlay" id="adminMobileOverlay" onclick="closeMobileSidebar()"></div>
+            
+            <header class="admin-header">
+                <div style="display:flex;align-items:center;gap:1rem;">
+                    <button class="admin-mobile-toggle" id="adminMenuToggle" onclick="toggleMobileSidebar()" aria-label="Toggle sidebar">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <h2 style="margin:0;font-size:1.2rem;font-weight:700;color:#111827;" id="pageTitle">Dashboard</h2>
+                </div>
+                <div style="display:flex;align-items:center;gap:1rem;">
+                    <div id="adminUserInfo" style="font-weight:500;color:#374151;font-size:0.9rem;">Admin</div>
+                    <div id="adminAvatar" style="width:36px;height:36px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;">
+                        A
+                    </div>
+                </div>
+            </header>
+
+            <div class="admin-content">
+                
+                <!-- Dashboard View -->
+                <section id="view-dashboard" class="view-section active">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0;">Overview</h3>
+                        <button class="btn btn--primary" id="btnTestPush" onclick="sendTestPushNotification()">
+                            <i class="fa-solid fa-bell"></i> Send Broadcast Push
+                        </button>
+                    </div>
+                    <div class="stats-grid admin-stats" id="dashboardStats">
+                        <div class="stat-card admin-stat" style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Loading stats...</div>
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3 style="margin-top: 0;">Recent Orders</h3>
+                            <canvas id="dashboardOrdersChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 style="margin-top: 0;">Revenue Distribution</h3>
+                            <canvas id="dashboardRevenueChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Orders View -->
+                <section id="view-orders" class="view-section">
+                    <div class="admin-table-container">
+                        <div class="admin-table-header">
+                            <h3>All Orders</h3>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr><td colspan="6">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Products View -->
+                <section id="view-products" class="view-section">
+                    <div class="admin-table-container">
+                        <div class="admin-table-header">
+                            <h3>Product Catalog</h3>
+                            <button class="btn btn--primary btn--sm" onclick="openAddProductModal()">
+                                <i class="fa-solid fa-plus"></i> Add Product
+                            </button>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Product Name</th>
+                                    <th>Farmer</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <tr><td colspan="7">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Customers View -->
+                <section id="view-customers" class="view-section">
+                    <div class="admin-table-container">
+                        <div class="admin-table-header">
+                            <h3>Registered Users</h3>
+                            <button class="btn btn-primary" onclick="openAddFarmerModal()" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                <i class="fa-solid fa-plus"></i> Add Farmer
+                            </button>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Location</th>
+                                    <th>Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <tr><td colspan="4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Payments View -->
+                <section id="view-payments" class="view-section">
+                    <div class="admin-table-container">
+                        <div class="admin-table-header">
+                            <h3>Payment Transactions</h3>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Order Ref</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                <tr><td colspan="5">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Support View -->
+                <section id="view-support" class="view-section">
+                    <div class="admin-table-container">
+                        <div class="admin-table-header">
+                            <h3>Support Messages</h3>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Subject</th>
+                                    <th>Message</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="supportTableBody">
+                                <tr><td colspan="5">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Analytics View -->
+                <section id="view-analytics" class="view-section">
+                    <div class="charts-grid">
+                        <div class="chart-card" style="grid-column: 1 / -1;">
+                            <h3 style="margin-top: 0;">Sales Growth (Last 6 Months)</h3>
+                            <canvas id="salesGrowthChart" style="height: 300px;"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 style="margin-top: 0;">Users by Role</h3>
+                            <canvas id="userRolesChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 style="margin-top: 0;">Order Completion Rate</h3>
+                            <canvas id="orderCompletionChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
             </div>
         </main>
+    </div>
+
+    <!-- Modals Overlay -->
+    <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        
+        <!-- Add/Edit Product Modal -->
+        <div id="productModal" class="card" style="display: none; width: 100%; max-width: 600px; padding: 2rem; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0;" id="productModalTitle">Add Product</h2>
+                <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <form id="adminProductForm" class="form">
+                <input type="hidden" id="productId" name="productId">
+                <div class="form-group">
+                    <label class="form-label">Farmer</label>
+                    <select id="farmerId" name="farmerId" class="form-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Name *</label>
+                    <input type="text" id="cropName" name="cropName" class="form-input" placeholder="e.g. Organic Tomatoes" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select id="category" name="category" class="form-select" required>
+                        <option value="vegetables">Vegetables</option>
+                        <option value="fruits">Fruits</option>
+                        <option value="grains">Grains</option>
+                        <option value="spices">Spices</option>
+                        <option value="pulses">Pulses</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Stock Quantity *</label>
+                        <input type="number" id="quantity" name="quantity" class="form-input" min="1" step="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Unit *</label>
+                        <select id="unit" name="unit" class="form-select" required>
+                            <option value="kg">kg</option>
+                            <option value="quintal">quintal</option>
+                            <option value="ton">ton</option>
+                            <option value="pieces">pieces</option>
+                            <option value="dozen">dozen</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price per Unit (₹) *</label>
+                    <input type="number" id="price" name="price" class="form-input" min="1" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="description" name="description" class="form-textarea" placeholder="Quality, harvest date, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <input type="text" id="location" name="location" class="form-input" placeholder="City, District, State" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Image *</label>
+                    <img id="adminProductImagePreview" alt="Product preview"
+                        style="display: none; max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 0.75rem; border: 1px solid #e5e7eb;">
+                    <label class="btn btn--secondary" style="cursor: pointer; display: inline-block;">
+                        Choose image
+                        <input type="file" id="adminProductImage" name="image" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;">
+                    </label>
+                    <p id="adminProductImageName" style="margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem;"></p>
+                </div>
+                <p id="adminFormError" class="form-error" style="display: none; color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem;"></p>
+                <button type="submit" class="btn btn--primary" style="width: 100%;" id="saveProductBtn">Save Product</button>
+            </form>
+        </div>
+        
+        <!-- Add Farmer Modal -->
+        <div id="addFarmerModal" class="card" style="display: none; width: 100%; max-width: 500px; padding: 2rem; max-height: 90vh; overflow-y: auto; background: white; border-radius: 12px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0;">Add New Farmer</h2>
+                <button onclick="closeFarmerModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <form id="adminFarmerForm" class="form">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="farmerName" name="name" class="form-input" required placeholder="e.g. Ramesh Kumar">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone Number *</label>
+                    <input type="tel" id="farmerPhone" name="phone" class="form-input" required placeholder="10-digit number" pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <input type="text" id="farmerLocation" name="location" class="form-input" required placeholder="e.g. Pune, Maharashtra">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" id="farmerPassword" name="password" class="form-input" required minlength="6" placeholder="Minimum 6 characters">
+                </div>
+                <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 1rem;" id="saveFarmerBtn">Create Farmer Account</button>
+            </form>
+        </div>
+
     </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/admin.js"></script>
 </body>
 </html>

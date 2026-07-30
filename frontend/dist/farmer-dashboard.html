@@ -1,14 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-checking">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Farmer Dashboard - Manage your produce listings and offers">
-    <title>Farmer Dashboard - FarmDirect</title>
-  <script type="module" crossorigin src="/assets/farmer-v3QMmmnU.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/auth-BVt79YaJ.js">
-  <link rel="stylesheet" crossorigin href="/assets/style-B74u2jw9.css">
+    <title>Farmer Dashboard - FarmDirect</title>
+    <style>
+        html.auth-checking body {
+            visibility: hidden;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/farmer-yfHVpJFo.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/api-7nHHIqDr.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-oH8Wn8sz.js">
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-ckwbz45p.js">
+  <link rel="stylesheet" crossorigin href="/assets/api-D0VKcXqG.css">
 </head>
 
 <body>
@@ -181,9 +188,20 @@
                 <div class="card" style="max-width: 600px; padding: 2rem;">
                     <form id="addListingForm">
                         <div class="form-group">
-                            <label class="form-label">Crop Name *</label>
+                            <label class="form-label">Product Name *</label>
                             <input type="text" class="form-input" id="cropName"
                                 placeholder="e.g., Tomatoes, Wheat, Rice" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category *</label>
+                            <select class="form-select" id="category" required>
+                                <option value="vegetables">Vegetables</option>
+                                <option value="fruits">Fruits</option>
+                                <option value="grains">Grains</option>
+                                <option value="spices">Spices</option>
+                                <option value="pulses">Pulses</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
                         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
                             <div class="form-group">
@@ -219,11 +237,19 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Product Image</label>
-                            <input type="file" class="form-input" id="image" accept="image/*">
+                            <img id="listingImagePreview" alt="Selected product preview"
+                                style="display: none; max-width: 220px; max-height: 160px; object-fit: cover; border-radius: var(--radius-lg); margin-bottom: 0.75rem; border: 1px solid var(--gray-200);">
+                            <label class="btn btn--secondary" style="cursor: pointer; display: inline-block;">
+                                Choose image from device
+                                <input type="file" id="image" accept="image/jpeg,image/png,image/webp,image/gif"
+                                    style="display: none;">
+                            </label>
+                            <p id="listingImageName" style="margin-top: 0.5rem; color: var(--gray-500); font-size: 0.875rem;"></p>
                         </div>
+                        <p id="listingFormError" style="display: none; color: var(--error-600, #dc2626); font-size: 0.875rem; margin-bottom: 1rem;"></p>
                         <div style="display: flex; gap: 1rem;">
-                            <button type="submit" class="btn btn--primary btn--lg">
-                                ✓ Create Listing
+                            <button type="submit" class="btn btn--primary btn--lg" id="createListingBtn">
+                                <span class="btn-text">✓ Create Listing</span>
                             </button>
                             <button type="button" class="btn btn--secondary btn--lg" onclick="showSection('listings')">
                                 Cancel
@@ -254,9 +280,12 @@
                             <input type="text" class="form-input" id="profileName" required>
                         </div>
                         <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-input" id="profileEmail" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-input" id="profilePhone" disabled
-                                style="background:var(--gray-100);cursor:not-allowed;">
+                            <input type="tel" class="form-input" id="profilePhone" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Role</label>
