@@ -368,3 +368,5 @@ if (isAuthPage()) {
 window.logout = logout;
 window.getUser = getUser;
 window.switchTab = switchTab;
+window.saveSession = saveSession;
+window.getToken = getToken;

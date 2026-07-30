@@ -936,8 +936,7 @@
 
             try {
                 const response = await api.putForm('/auth/profile', formData);
-                
-                saveSession(getToken(), response.user);
+                window.saveSession(window.getToken(), response.user);
                 
                 document.getElementById('userName').textContent = response.user.name;
                 
