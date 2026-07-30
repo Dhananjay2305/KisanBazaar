@@ -31,146 +31,55 @@ const upload = multer({
     }
 });
 
-// Register new user
+// Register new user (Legacy MongoDB - mostly unused since frontend uses Supabase)
 router.post('/register', async (req, res) => {
-    try {
-        const { name, phone, role, password, location } = req.body;
-
-        // Check if user already exists
-        const existingUser = await User.findOne({ phone });
-        if (existingUser) {
-            return res.status(400).json({ error: 'Phone number already registered' });
-        }
-
-        // Validate role
-        if (!['farmer', 'buyer'].includes(role)) {
-            return res.status(400).json({ error: 'Role must be farmer or buyer' });
-        }
-
-        // Create new user
-        const user = new User({ name, phone, role, password, location });
-        await user.save();
-
-        // Generate token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        res.status(201).json({
-            message: 'Registration successful',
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                phone: user.phone,
-                role: user.role,
-                location: user.location,
-                profileImage: user.profileImage
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    // ...
 });
 
-// Login user
-router.post('/login', async (req, res) => {
+// Admin add farmer using Supabase
+router.post('/admin-add-farmer', async (req, res) => {
     try {
-        const { phone, password } = req.body;
+        const supabase = require('../config/supabase');
+        const { name, phone, location, password } = req.body;
+        
+        // Basic auth check for admin could go here if we pass a token
 
-        // Find user
-        const user = await User.findOne({ phone });
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid phone or password' });
-        }
-
-        // Check password
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid phone or password' });
-        }
-
-        // Generate token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        res.json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                phone: user.phone,
-                role: user.role,
-                location: user.location,
-                profileImage: user.profileImage
-            }
+        const email = `${phone}@farmdirect.com`;
+        
+        // 1. Create auth user
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: email,
+            password: password,
+            email_confirm: true,
+            user_metadata: { name, role: 'farmer', phone, location }
         });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
 
-// Get current user profile
-router.get('/me', async (req, res) => {
-    try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
+        if (authError) {
+            return res.status(400).json({ error: authError.message });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('-password');
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json({ user });
-    } catch (error) {
-        res.status(401).json({ error: 'Invalid token' });
-    }
-});
-
-// Update profile
-router.put('/profile', upload.single('profileImage'), async (req, res) => {
-    try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId);
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        const { name, location } = req.body;
-
-        if (name) user.name = name;
-        if (location) user.location = location;
-        if (req.file) user.profileImage = `/uploads/${req.file.filename}`;
-
-        await user.save();
-
-        res.json({
-            message: 'Profile updated successfully',
-            user: {
-                id: user._id,
-                name: user.name,
-                phone: user.phone,
-                role: user.role,
-                location: user.location,
-                profileImage: user.profileImage
+        const userId = authData.user.id;
+        
+        // 2. Wait slightly for trigger, then insert profile manually if needed
+        await new Promise(r => setTimeout(r, 1000));
+        
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+        
+        if (!profile) {
+            const { error: profileError } = await supabase.from('profiles').insert({
+                id: userId,
+                name: name,
+                role: 'farmer',
+                location: location,
+                phone: phone
+            });
+            
+            if (profileError) {
+                console.error(`Error creating profile for ${name}:`, profileError.message);
             }
-        });
+        }
+
+        res.status(201).json({ message: 'Farmer added successfully', id: userId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openAddProductModal = openAddProductModal;
     window.openEditProductModal = openEditProductModal;
     window.closeModal = closeModal;
+    window.openAddFarmerModal = openAddFarmerModal;
+    window.closeFarmerModal = closeFarmerModal;
 });
 
 function previewAdminProductImage(event) {
@@ -543,5 +545,38 @@ document.getElementById('adminProductForm')?.addEventListener('submit', async (e
         showToast(error.message || 'Save failed', 'error');
     } finally {
         setSaveButtonLoading(false, isEdit ? 'Update Product' : 'Save Product');
+    }
+});
+
+function openAddFarmerModal() {
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('addFarmerModal').style.display = 'block';
+    document.getElementById('adminFarmerForm').reset();
+}
+
+function closeFarmerModal() {
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.getElementById('addFarmerModal').style.display = 'none';
+}
+
+document.getElementById('adminFarmerForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveFarmerBtn');
+    const originalText = btn.innerHTML;
+    
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Creating...';
+        
+        const data = Object.fromEntries(new FormData(e.target).entries());
+        await api.createFarmerAsAdmin(data);
+        showToast('Farmer added successfully!', 'success');
+        closeFarmerModal();
+        initCustomers(); // Refresh the customers list
+    } catch (error) {
+        showToast(error.message || 'Failed to add farmer', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 });

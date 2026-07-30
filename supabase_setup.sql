@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.listings (
     price NUMERIC NOT NULL,
     location TEXT NOT NULL,
     description TEXT,
+    category TEXT DEFAULT 'vegetables' CHECK (category IN ('vegetables', 'fruits', 'grains', 'spices', 'pulses', 'other')),
     image TEXT,
     status TEXT DEFAULT 'available' CHECK (status IN ('available', 'sold', 'hidden')) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -89,6 +90,20 @@ CREATE POLICY "Farmers can insert own listings" ON public.listings FOR INSERT WI
 CREATE POLICY "Farmers can update own listings" ON public.listings FOR UPDATE USING (auth.uid() = farmer_id);
 CREATE POLICY "Farmers can delete own listings" ON public.listings FOR DELETE USING (auth.uid() = farmer_id);
 
+-- Admin can manage any listing (insert/update/delete for shopkeeper panel)
+DROP POLICY IF EXISTS "Admins can insert listings" ON public.listings;
+DROP POLICY IF EXISTS "Admins can update listings" ON public.listings;
+DROP POLICY IF EXISTS "Admins can delete listings" ON public.listings;
+CREATE POLICY "Admins can insert listings" ON public.listings FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Admins can update listings" ON public.listings FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Admins can delete listings" ON public.listings FOR DELETE USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
 DROP POLICY IF EXISTS "Users can view relevant offers" ON public.offers;
 DROP POLICY IF EXISTS "Buyers can insert offers" ON public.offers;
 DROP POLICY IF EXISTS "Relevant users can update offers" ON public.offers;
@@ -139,3 +154,51 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ==========================================
+-- 9. STORAGE BUCKETS & RLS POLICIES
+-- ==========================================
+-- Ensure storage buckets exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('produce', 'produce', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Public read policies
+DROP POLICY IF EXISTS "Public access to produce images" ON storage.objects;
+CREATE POLICY "Public access to produce images" ON storage.objects 
+    FOR SELECT USING (bucket_id = 'produce');
+
+DROP POLICY IF EXISTS "Public access to avatars" ON storage.objects;
+CREATE POLICY "Public access to avatars" ON storage.objects 
+    FOR SELECT USING (bucket_id = 'avatars');
+
+-- Upload / Insert policies (any authenticated user can upload listings or avatars)
+DROP POLICY IF EXISTS "Authenticated users can upload produce images" ON storage.objects;
+CREATE POLICY "Authenticated users can upload produce images" ON storage.objects 
+    FOR INSERT WITH CHECK (bucket_id = 'produce' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
+CREATE POLICY "Authenticated users can upload avatars" ON storage.objects 
+    FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+
+-- Manage policies (users can update or delete their own uploads)
+DROP POLICY IF EXISTS "Users can update own uploads in produce" ON storage.objects;
+CREATE POLICY "Users can update own uploads in produce" ON storage.objects 
+    FOR UPDATE USING (bucket_id = 'produce' AND auth.uid() = owner);
+
+DROP POLICY IF EXISTS "Users can update own uploads in avatars" ON storage.objects;
+CREATE POLICY "Users can update own uploads in avatars" ON storage.objects 
+    FOR UPDATE USING (bucket_id = 'avatars' AND auth.uid() = owner);
+
+DROP POLICY IF EXISTS "Users can delete own uploads in produce" ON storage.objects;
+CREATE POLICY "Users can delete own uploads in produce" ON storage.objects 
+    FOR DELETE USING (bucket_id = 'produce' AND auth.uid() = owner);
+
+DROP POLICY IF EXISTS "Users can delete own uploads in avatars" ON storage.objects;
+CREATE POLICY "Users can delete own uploads in avatars" ON storage.objects 
+    FOR DELETE USING (bucket_id = 'avatars' AND auth.uid() = owner);
+

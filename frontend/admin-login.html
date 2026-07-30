@@ -120,7 +120,7 @@
             const phone = document.getElementById('adminPhone').value.trim();
             const password = document.getElementById('adminPassword').value;
             const btn = document.getElementById('loginBtn');
-            const btnText = btn.querySelector('.btn-text');
+            const btnText = btn.querySelector('.btn-text') || btn;
 
             if (!phone || !password) {
                 showError('Please fill in all fields.');
@@ -182,5 +182,7 @@
             } catch (_) {}
         })();
     </script>
+<script type="module" src="js/splash-back.js"></script>
+<script type="module" src="/js/push-notifications.js"></script>
 </body>
 </html>

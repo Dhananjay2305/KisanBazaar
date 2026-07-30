@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: './',
+  envPrefix: 'VITE_',
   build: {
     rollupOptions: {
       input: {

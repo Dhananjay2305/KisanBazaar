@@ -152,7 +152,8 @@
                     <button class="btn btn--secondary" onclick="clearCartUI()">Empty Cart</button>
                 </div>
                 <div class="card" style="padding:0; overflow:hidden;">
-                    <table class="table" id="cartTable">
+                    <div class="table-responsive">
+<table class="table" id="cartTable">
                         <thead>
                             <tr>
                                 <th>Item</th>
@@ -166,6 +167,7 @@
                             <!-- Cart items added dynamically -->
                         </tbody>
                     </table>
+</div>
                     <div id="cartEmpty" style="padding:3rem; text-align:center; display:none;">
                         <p style="font-size:1.5rem; color:var(--gray-400); margin-bottom:1rem;">Your cart is empty</p>
                         <button class="btn btn--primary" onclick="showSection('browse')">Go Shopping</button>
@@ -186,7 +188,8 @@
                     <h1 class="page-title">My Sent Offers</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="offersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="offersTable">
                         <thead>
                             <tr>
                                 <th>Crop</th>
@@ -201,6 +204,7 @@
                             <!-- Offers will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noOffersMessage" style="display: none;">
                         <div class="empty-state__icon">📤</div>
                         <h3 class="empty-state__title">No offers sent yet</h3>
@@ -216,7 +220,8 @@
                     <h1 class="page-title">My Orders</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="ordersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="ordersTable">
                         <thead>
                             <tr>
                                 <th>Order ID</th>
@@ -231,6 +236,7 @@
                             <!-- Orders will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noOrdersMessage" style="display: none;">
                         <div class="empty-state__icon">📦</div>
                         <h3 class="empty-state__title">No orders yet</h3>

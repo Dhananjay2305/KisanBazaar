@@ -11,11 +11,11 @@
             visibility: hidden;
         }
     </style>
-  <script type="module" crossorigin src="/assets/farmer-yfHVpJFo.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/api-7nHHIqDr.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-oH8Wn8sz.js">
+  <script type="module" crossorigin src="/assets/farmer-Bb6a5T9K.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/api-BHxz7L8x.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-DBSquTju.js">
   <link rel="modulepreload" crossorigin href="/assets/preload-helper-ckwbz45p.js">
-  <link rel="stylesheet" crossorigin href="/assets/api-D0VKcXqG.css">
+  <link rel="stylesheet" crossorigin href="/assets/api-CDGBb-Nk.css">
 </head>
 
 <body>
@@ -126,7 +126,8 @@
                     <h1 class="page-title">Offers Received</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="offersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="offersTable">
                         <thead>
                             <tr>
                                 <th>Crop</th>
@@ -142,6 +143,7 @@
                             <!-- Offers will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noOffersMessage" style="display: none;">
                         <div class="empty-state__icon">💰</div>
                         <h3 class="empty-state__title">No offers yet</h3>
@@ -156,7 +158,8 @@
                     <h1 class="page-title">Orders Received</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="receivedOrdersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="receivedOrdersTable">
                         <thead>
                             <tr>
                                 <th>Order ID</th>
@@ -172,6 +175,7 @@
                             <!-- Orders will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noReceivedOrdersMessage" style="display: none;">
                         <div class="empty-state__icon">📦</div>
                         <h3 class="empty-state__title">No orders yet</h3>

@@ -122,7 +122,8 @@
                     <h1 class="page-title">Offers Received</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="offersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="offersTable">
                         <thead>
                             <tr>
                                 <th>Crop</th>
@@ -138,6 +139,7 @@
                             <!-- Offers will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noOffersMessage" style="display: none;">
                         <div class="empty-state__icon">💰</div>
                         <h3 class="empty-state__title">No offers yet</h3>
@@ -152,7 +154,8 @@
                     <h1 class="page-title">Orders Received</h1>
                 </div>
                 <div style="background: white; border-radius: var(--radius-xl); overflow: hidden;">
-                    <table class="offers-table" id="receivedOrdersTable">
+                    <div class="table-responsive">
+<table class="offers-table" id="receivedOrdersTable">
                         <thead>
                             <tr>
                                 <th>Order ID</th>
@@ -168,6 +171,7 @@
                             <!-- Orders will be loaded here -->
                         </tbody>
                     </table>
+</div>
                     <div class="empty-state" id="noReceivedOrdersMessage" style="display: none;">
                         <div class="empty-state__icon">📦</div>
                         <h3 class="empty-state__title">No orders yet</h3>

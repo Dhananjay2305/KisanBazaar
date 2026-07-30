@@ -1,4 +1,4 @@
-import api from './api.js';
+import api, { resolveImageUrl } from './api.js';
 import { getUser } from './auth.js';
 
 let shippingLocation = null;
@@ -7,12 +7,9 @@ let deliveryFee = 0;
 let map = null;
 let marker = null;
 
-const IMG_BASE = 'http://127.0.0.1:5001';
-
 function getAvatarUrl(image_path, name = 'Farmer') {
-    if (!image_path) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff`;
-    if (image_path.startsWith('http')) return image_path;
-    return IMG_BASE + image_path;
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10B981&color=fff`;
+    return resolveImageUrl(image_path, fallback);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

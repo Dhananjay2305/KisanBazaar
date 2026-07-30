@@ -1711,7 +1711,8 @@ img {
     border-radius: 14px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     border: 1px solid #e5e7eb;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     margin-bottom: 2rem;
 }
 
@@ -2026,4 +2027,78 @@ img {
     background: rgba(255,255,255,0.1);
     color: #fff;
     border-color: rgba(255,255,255,0.4);
+}
+/* ===================================
+   Mobile Specific (up to 480px)
+   =================================== */
+@media (max-width: 480px) {
+    /* Base typography adjustments */
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.15rem; }
+    
+    .hero {
+        padding: 6rem 0 3rem;
+    }
+    
+    .hero__title {
+        font-size: 2rem;
+    }
+    
+    .container {
+        padding: 0 1rem;
+    }
+
+    /* Grids to single column */
+    .listings-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    /* Admin layout specific */
+    .stats-grid.admin-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-header {
+        padding: 0 0.5rem;
+    }
+
+    .admin-content {
+        padding: 0.75rem;
+    }
+
+    .admin-table th, .admin-table td {
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Make buttons and inputs span full width mostly */
+    .filter-bar .form-input,
+    .filter-bar .form-select {
+        min-width: 100%;
+    }
+
+    /* Modals */
+    .modal {
+        padding: 1rem;
+    }
+    
+    /* Sidebars */
+    .sidebar {
+        width: 100%;
+    }
+    
+    .main-content {
+        padding: 1rem;
+    }
+
+    /* Forms */
+    .auth-page__right {
+        padding: 1.5rem;
+    }
+    
+    .admin-login-card {
+        padding: 1.5rem;
+    }
 }
