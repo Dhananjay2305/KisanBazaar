@@ -308,7 +308,7 @@
     <script type="module" src="js/auth.js"></script>
     <script type="module">
         import { resolveImageUrl, showToast } from './js/api.js';
-        import { bootstrapDashboardUser } from './js/auth.js';
+        import { bootstrapDashboardUser, saveSession, getToken } from './js/auth.js';
 
         // Check authentication (wait for Supabase session before redirecting)
         document.addEventListener('DOMContentLoaded', async () => {
@@ -831,9 +831,7 @@
             try {
                 const response = await api.putForm('/auth/profile', formData);
                 
-                import('./js/auth.js').then(({ saveSession, getToken }) => {
-                    saveSession(getToken(), response.user);
-                });
+                saveSession(getToken(), response.user);
                 
                 document.getElementById('userName').textContent = response.user.name;
                 
