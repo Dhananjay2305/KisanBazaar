@@ -377,6 +377,7 @@
         });
 
         function showSection(sectionName) {
+            document.getElementById('sidebar')?.classList.remove('open');
             const validSections = ['listings', 'offers', 'received_orders', 'add', 'profile'];
             if (!validSections.includes(sectionName)) return;
 
